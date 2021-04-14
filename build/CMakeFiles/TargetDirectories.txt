@@ -1,0 +1,3 @@
+/home/magnusb96/Desktop/CppSim/build/CMakeFiles/rebuild_cache.dir
+/home/magnusb96/Desktop/CppSim/build/CMakeFiles/app.dir
+/home/magnusb96/Desktop/CppSim/build/CMakeFiles/edit_cache.dir
