@@ -3,7 +3,9 @@
 ## Compiling
 from the /cpp folder do:
 > mkdir build && cd build
+>
 > cmake ..
+> 
 > make
 
 ## Running
