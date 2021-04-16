@@ -27,6 +27,7 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
     exploration_vectors = new map<ExpVecType, Vector2d>[1 + num_agents_to_deploy];
     set_all_exp_vec_types_for_beacon(0, {});
 
+
     this->num_rays_per_range_sensor = num_rays_per_range_sensor;
     if (num_rays_per_range_sensor == 1) {
         ray_angles_rel_SENSOR = ArrayXd::Zero(1);
@@ -44,7 +45,8 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
 
 void Simulator::simulate() {
     time = 0;
-
+    double dt;
+    
     for (int curr_deploying_agent_id = 1; curr_deploying_agent_id <= num_agents_to_deploy; curr_deploying_agent_id++) {
         
         beacon_traj_data[curr_deploying_agent_id] = MatrixXd();
@@ -55,11 +57,11 @@ void Simulator::simulate() {
         beacon_traj_data[curr_deploying_agent_id](TIMESTAMP_IDX, 0) = time;
 
         int step_count = 0;
-        double* dt_ptr;
         StepResult step_result = NO_PROBLEM;
         while (step_result == NO_PROBLEM && step_count < agent_max_steps) {
-            step_result = do_step(curr_deploying_agent_id, dt_ptr, step_count);
-            time += *dt_ptr;
+            dt = base_dt;
+            step_result = do_step(curr_deploying_agent_id, &dt, step_count);
+            time += dt;
             step_count++;
         }
 
@@ -74,7 +76,7 @@ void Simulator::simulate() {
         */
         if (step_result == NO_NEIGHBORS) {
             step_count--;
-            time -= (*dt_ptr);
+            time -= dt;
             cout << "Agent " << curr_deploying_agent_id << " landed due to a lack of neighbors\n";
         }
 
@@ -130,12 +132,12 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     
     Vector5d state_der;
     state_der << F(0), F(1), 0, 0, 0;
-
-    *dt_ptr = base_dt;
-    if (F_e.norm() > 50) {
+    
+    double F_e_norm = F_e.norm();
+    if (F_e_norm > 50) {
         *dt_ptr = base_dt / 100.0;
     }
-    else if (F_e.norm() > 10) {
+    else if (F_e_norm > 10) {
         *dt_ptr = base_dt / 10.0;
     }
 
@@ -146,7 +148,6 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     beacon_traj_data[curr_deploying_agent_id].block(F_E_X_IDX, step_count + 1, 2, 1) = F_e;
     beacon_traj_data[curr_deploying_agent_id].block(F_X_IDX, step_count + 1, 2, 1) = F_nominal;
     beacon_traj_data[curr_deploying_agent_id](TIMESTAMP_IDX, step_count + 1) = time;
-
     return NO_PROBLEM;
 }
 
@@ -174,7 +175,6 @@ Vector2d Simulator::get_obstacle_avoidance_vector(Vector2d agent_pos, double age
         agent_pos,
         agent_yaw
     );
-    
     Vector2d o = Vector2d::Zero();
     for (int i = 0; i < 4; i++) {
         o += sensed_ranges_and_angles(i, 0) * Rotation2D<double>(sensed_ranges_and_angles(i, 1)).toRotationMatrix() * Vector2d::UnitX();
