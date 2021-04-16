@@ -18,3 +18,6 @@ from the cpp/build folder do:
 ```
 
 and watch magic things happen
+
+## Note on building matplotlib-cpp
+You have to build matplotlib-cpp do make the plotting work!
