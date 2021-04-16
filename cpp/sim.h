@@ -32,7 +32,7 @@ public:
 
     inline Vector2d get_beacon_exploration_dir(int beacon_id, ExpVecType exp_vec_type) const { return exploration_vectors[beacon_id][exp_vec_type]; }
     inline Vector2d get_applied_beacon_exploration_dir(int beacon_id) const { return exploration_vectors[beacon_id][use_exp_vec_type]; }
-    
+
     inline double get_force_saturation_limit() { return force_saturation_limit; }
     inline double get_minimum_force_threshold() { return minimum_force_threshold; }
 
@@ -110,6 +110,8 @@ private:
 
     Vector2d get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_curr_neighs) const;
     Vector2d get_env_force_agent(Vector2d agent_pos, double agent_yaw) const;
+    Vector2d get_obstacle_avoidance_vector(Vector2d agent_pos, double agent_yaw) const;
+    
     Matrix<double, 4, 2> get_sensed_ranges_and_angles(Vector2d agent_pos, double agent_yaw) const;
 
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);

@@ -45,7 +45,6 @@ int main() {
     );
     simulator.simulate();
 
-    // Plotting final configuration
     plot_config(simulator, to_string(n_agents) + "_agnt_rand_square_world");
 
     return 0;

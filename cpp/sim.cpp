@@ -165,21 +165,23 @@ Vector2d Simulator::get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_
 }
 
 Vector2d Simulator::get_env_force_agent(Vector2d agent_pos, double agent_yaw) const {
+    Vector2d o_hat = get_obstacle_avoidance_vector(agent_pos, agent_yaw);
+    return k_obs * (1 / (RANGE_SENSOR_MAX_RANGE_METERS - o_hat.norm())) * o_hat;
+}
+
+Vector2d Simulator::get_obstacle_avoidance_vector(Vector2d agent_pos, double agent_yaw) const {
     Matrix<double, 4, 2> sensed_ranges_and_angles = get_sensed_ranges_and_angles(
         agent_pos,
         agent_yaw
     );
+    
     Vector2d o = Vector2d::Zero();
     for (int i = 0; i < 4; i++) {
         o += sensed_ranges_and_angles(i, 0) * Rotation2D<double>(sensed_ranges_and_angles(i, 1)).toRotationMatrix() * Vector2d::UnitX();
     }
-    Vector2d o_hat = o;
+
     double o_norm = o.norm();
-    if (o_norm > RANGE_SENSOR_MAX_RANGE_METERS) {
-        o_hat *= RANGE_SENSOR_MAX_RANGE_METERS / o_norm;
-    }
-    double o_hat_norm = o_norm < RANGE_SENSOR_MAX_RANGE_METERS ? o_norm : RANGE_SENSOR_MAX_RANGE_METERS;
-    return k_obs * (1 / (RANGE_SENSOR_MAX_RANGE_METERS - o_hat_norm)) * o_hat;
+    return o_norm <= RANGE_SENSOR_MAX_RANGE_METERS ? o : (RANGE_SENSOR_MAX_RANGE_METERS / o_norm)*o;
 }
 
 Matrix<double, 4, 2> Simulator::get_sensed_ranges_and_angles(Vector2d agent_pos, double agent_yaw) const {
