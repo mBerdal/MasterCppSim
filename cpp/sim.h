@@ -1,0 +1,112 @@
+#ifndef SIMULATOR_H
+#define SIMULATOR_H
+
+#include "env.h"
+
+#include "Eigen/Dense"
+using namespace Eigen;
+
+#include <set>
+using namespace std;
+
+#define Vector5d Matrix<double, 5, 1>
+
+class Simulator {
+public:
+    Simulator(double base_dt, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
+            Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double),
+            double force_saturation_limit = 4.0, double minimum_force_threshold = 0.01, int agent_max_steps = 100000);
+    
+    void simulate();
+
+    inline Env get_environment() const { return environment; }
+    inline int get_num_deployed_beacons() const { return 1 + num_agents_to_deploy; }
+    inline int get_num_deployed_agents() const { return num_agents_to_deploy; }
+
+    inline Vector2d get_beacon_exploration_dir(int beacon_id) const { return exploration_vectors[beacon_id]; }
+
+    inline double get_force_saturation_limit() { return force_saturation_limit; }
+    inline double get_minimum_force_threshold() { return minimum_force_threshold; }
+
+    static const int NUM_STATE_VARIABLES = 5;
+    static const int NUM_TRAJ_DATA_POINTS = 12;
+
+    static const int POSITION_X_IDX = 0;
+    static const int POSITION_Y_IDX = 1;
+    static const int VELOCITY_X_IDX = 2;
+    static const int VELOCITY_Y_IDX = 3;
+    static const int YAW_IDX = 4;
+
+    static const int F_N_X_IDX = 5;
+    static const int F_N_Y_IDX = 6;
+    static const int F_E_X_IDX = 7;
+    static const int F_E_Y_IDX = 8;
+    static const int F_X_IDX = 9;
+    static const int F_Y_IDX = 10;
+
+    static const int TIMESTAMP_IDX = 11;
+
+
+    MatrixXd get_beacon_traj_data(int agent_id) const { return beacon_traj_data[agent_id]; }
+    MatrixXd* get_all_traj_data() const { return beacon_traj_data; }
+    
+private:
+
+    static const int TRAJ_DATA_SECTOR_SIZE = 500;
+
+    enum StepResult {
+        NO_NEIGHBORS,
+        ZERO_FORCE,
+        NO_PROBLEM
+    };
+
+    struct XiParams {
+        double d_perf;
+        double d_none;
+        double xi_bar;
+        double neigh_treshold;
+    };
+    XiParams xi_params;
+
+    double force_saturation_limit;
+    double minimum_force_threshold;;
+
+    static constexpr double RANGE_SENSOR_FOV_RAD = 27.0 * M_PI / 180.0;
+    static constexpr double RANGE_SENSOR_MAX_RANGE_METERS = 2;
+    int num_rays_per_range_sensor;
+    ArrayXd ray_angles_rel_SENSOR;
+
+    Env environment;
+    int num_agents_to_deploy;
+    int agent_max_steps;
+    double time;
+    double base_dt;
+    double k_obs;
+
+    Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double);
+
+    /*
+    Trajectory data for each agent. The matrix for agent with ID i is located
+    at beacon_traj_data[i].
+    
+    beacon_traj_data[i](0, j): Timestamp number j.
+    beacon_traj_data[i](1, j): x-position of agent i at time beacon_traj_data[i](0, j).
+    beacon_traj_data[i](2, j): y-position of agent i at time beacon_traj_data[i](0, j).
+    beacon_traj_data[i](3, j): x-velocity of agent i at time beacon_traj_data[i](0, j).
+    beacon_traj_data[i](4, j): y-velocity of agent i at time beacon_traj_data[i](0, j).
+    */
+    MatrixXd *beacon_traj_data;
+    
+    Vector2d* exploration_vectors;
+
+    Vector2d get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_curr_neighs) const;
+    Vector2d get_env_force_agent(Vector2d agent_pos, double agent_yaw) const;
+    Matrix<double, 4, 2> get_sensed_ranges_and_angles(Vector2d agent_pos, double agent_yaw) const;
+
+    set<int> get_agent_neighbors(int agent_id, Vector2d agent_pos) const;
+    Vector2d get_exploration_vector(int agent_id, set<int> neighbors_at_landing_ids) const;
+
+    StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
+};
+
+#endif
