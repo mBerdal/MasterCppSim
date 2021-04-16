@@ -7,7 +7,9 @@
 
 Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
                     Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double),
-                    double force_saturation_limit, double minimum_force_threshold, int agent_max_steps) {
+                    double force_saturation_limit, double minimum_force_threshold, int agent_max_steps,
+                    ExpVecType use_exp_vec_type) {
+
     this->base_dt = base_dt;
     this->k_obs = k_obs;
     RangeRay::env = environment;
@@ -17,12 +19,13 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
     this->force_saturation_limit = force_saturation_limit;
     this->minimum_force_threshold = minimum_force_threshold;
     this->agent_max_steps = agent_max_steps;
+    this->use_exp_vec_type = use_exp_vec_type;
     
     beacon_traj_data = new MatrixXd[1 + num_agents_to_deploy];
     beacon_traj_data[0] = Matrix<double, NUM_TRAJ_DATA_POINTS, 1>::Zero();
 
-    exploration_vectors = new Vector2d[1 + num_agents_to_deploy];
-    exploration_vectors[0] = Vector2d::UnitX();
+    exploration_vectors = new map<ExpVecType, Vector2d>[1 + num_agents_to_deploy];
+    set_all_exp_vec_types_for_beacon(0, {});
 
     this->num_rays_per_range_sensor = num_rays_per_range_sensor;
     if (num_rays_per_range_sensor == 1) {
@@ -83,7 +86,7 @@ void Simulator::simulate() {
             beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1)
         );
 
-        exploration_vectors[curr_deploying_agent_id] = get_exploration_vector(curr_deploying_agent_id, agent_neighbors_at_landing); 
+        set_all_exp_vec_types_for_beacon(curr_deploying_agent_id, agent_neighbors_at_landing);
 
         std::cout << "Agent " << curr_deploying_agent_id << " landed at\n" << beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1) << "\n";
     }
@@ -156,7 +159,7 @@ Vector2d Simulator::get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_
         double dist = (agent_pos - other_beacon_pos).norm();
         double xi = get_Xi_from_model(dist, xi_params.d_perf, xi_params.d_none, xi_params.xi_bar);
 
-        F += (*get_force_func)(agent_pos, beacon_id, other_beacon_pos, exploration_vectors[beacon_id], xi);
+        F += (*get_force_func)(agent_pos, beacon_id, other_beacon_pos, exploration_vectors[beacon_id][use_exp_vec_type], xi);
     }
     return F;
 }
@@ -212,7 +215,20 @@ set<int> Simulator::get_agent_neighbors(int agent_id, Vector2d agent_pos) const 
     return neighs;
 }
 
-Vector2d Simulator::get_exploration_vector(int agent_id, set<int> neighbors_at_landing_ids) const {
+void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids){
+    exploration_vectors[beacon_id][ExpVecType::NOMINAL] = get_nominal_exploration_vector_for_beacon(
+            beacon_id, neighbors_at_landing_ids
+    );
+    Matrix2d R = Rotation2Dd((M_PI / 4.0) * RandomNumberGenerator::get_between(-1, 1)).toRotationMatrix();
+    exploration_vectors[beacon_id][ExpVecType::NOMINAL_RAND] = R*exploration_vectors[beacon_id][ExpVecType::NOMINAL];
+}
+
+Vector2d Simulator::get_nominal_exploration_vector_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids) const {
+    if (neighbors_at_landing_ids.size() == 0) {
+        cout << "Beacon " << beacon_id << " has no neighbors. Using unit x vector as exploration vector.\n";
+        return Vector2d::UnitX();
+    }
+
     double sum_of_weights = 0;
     for (int neigh_id : neighbors_at_landing_ids) {
         sum_of_weights += neigh_id + 1;
@@ -220,10 +236,9 @@ Vector2d Simulator::get_exploration_vector(int agent_id, set<int> neighbors_at_l
     Vector2d weighted_avg_vec_to_neighs = Vector2d::Zero();
     for (int neigh_id : neighbors_at_landing_ids) {
         weighted_avg_vec_to_neighs += ((neigh_id + 1) / sum_of_weights)*(
-            beacon_traj_data[agent_id].topRightCorner(2, 1) - beacon_traj_data[neigh_id].topRightCorner(2, 1)
+            beacon_traj_data[beacon_id].topRightCorner(2, 1) - beacon_traj_data[neigh_id].topRightCorner(2, 1)
         );
     }
-    Vector2d nominal_exploration_dir = weighted_avg_vec_to_neighs.normalized();
-    Matrix2d R = Rotation2Dd((M_PI / 4.0) * RandomNumberGenerator::get_between(-1, 1)).toRotationMatrix();
-    return R * nominal_exploration_dir;//R * nominal_exploration_dir;
+    return weighted_avg_vec_to_neighs.normalized();
 }
+

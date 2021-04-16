@@ -13,7 +13,7 @@ Vector2d get_force_from_beacon(Vector2d agent_pos, int beacon_id, Vector2d beaco
 }
 
 int main() {
-    int n_agents = 60;
+    int n_agents = 10;
     int num_rays_per_range_sensor = 1;
 
     // Creating rectangular environment
@@ -27,6 +27,9 @@ int main() {
     // Initializing simulator and running
     double base_dt = 10e-3;
     double k_obs = 1;
+    int agent_max_steps = 100000;
+    double force_saturation_limit = 4.0;
+    double minimum_force_threshold = 0.01;
     
     Simulator simulator(
         base_dt,
@@ -35,9 +38,10 @@ int main() {
         n_agents,
         num_rays_per_range_sensor,
         *get_force_from_beacon,
-        4.0,
-        0.01,
-        100000
+        force_saturation_limit,
+        minimum_force_threshold,
+        agent_max_steps,
+        ExpVecType::NOMINAL
     );
     simulator.simulate();
 

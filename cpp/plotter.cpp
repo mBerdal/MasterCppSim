@@ -4,6 +4,11 @@
 
 namespace plt = matplotlibcpp;
 
+#define BLUE "#5865b8"
+#define GREEN "#3d8045"
+#define DARK_GRAY "#8A8A8A"
+#define LITE_GRAY "#CDCDCD" 
+
 void plot_line_segment(Vector2d start, Vector2d end, const map<string, string>& keywords = {{}}) {
   vector<double> x_range = {start(0), end(0)};
   vector<double> y_range = {start(1), end(1)};
@@ -20,7 +25,7 @@ void plot_config(Simulator simulator, string run_name) {
         plot_line_segment(
           w.get_start(),
           w.get_end(),
-          {{"color", "#8A8A8A"}});
+          {{"color", DARK_GRAY}});
     }
 
     vector<double> end_x_pos;
@@ -41,8 +46,13 @@ void plot_config(Simulator simulator, string run_name) {
         */
         plot_line_segment(
           beacon_final_pos,
-          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id),
-          {{"color", "green"}}
+          beacon_final_pos + simulator.get_applied_beacon_exploration_dir(beacon_id),
+          {{"color", GREEN}, {"label", R"($\mathbf{v}$)"}}
+        );
+        plot_line_segment(
+          beacon_final_pos,
+          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NOMINAL),
+          {{"color", BLUE}, {"label", R"($\mathbf{v}_{nom}$)"}}
         );
         /*
         Plotting beacon trajectory
@@ -50,7 +60,7 @@ void plot_config(Simulator simulator, string run_name) {
         plt::plot(
             eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(beacon_id).row(Simulator::POSITION_X_IDX)),
             eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(beacon_id).row(Simulator::POSITION_Y_IDX)),
-            {{"linestyle", "--"}, {"color", "#CDCDCD"}}
+            {{"linestyle", "--"}, {"color", LITE_GRAY}}
         );
 
     }
@@ -61,7 +71,8 @@ void plot_config(Simulator simulator, string run_name) {
     plt::scatter(
         end_x_pos,
         end_y_pos,
-        40.0
+        40.0,
+        {{"color", BLUE}}
     );
 
     plt::xlabel("x [m]");
