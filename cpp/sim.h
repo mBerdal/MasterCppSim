@@ -61,6 +61,11 @@ public:
 private:
 
     static const int TRAJ_DATA_SECTOR_SIZE = 500;
+    static constexpr double RANGE_SENSOR_FOV_RAD = 27.0 * M_PI / 180.0;
+    static constexpr double RANGE_SENSOR_MAX_RANGE_METERS = 2;
+
+    int num_rays_per_range_sensor;
+    ArrayXd ray_angles_rel_SENSOR;
 
     enum StepResult {
         NO_NEIGHBORS,
@@ -79,10 +84,6 @@ private:
     double force_saturation_limit;
     double minimum_force_threshold;;
 
-    static constexpr double RANGE_SENSOR_FOV_RAD = 27.0 * M_PI / 180.0;
-    static constexpr double RANGE_SENSOR_MAX_RANGE_METERS = 2;
-    int num_rays_per_range_sensor;
-    ArrayXd ray_angles_rel_SENSOR;
 
     Env environment;
     int num_agents_to_deploy;
@@ -96,14 +97,8 @@ private:
     Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double);
 
     /*
-    Trajectory data for each agent. The matrix for agent with ID i is located
-    at beacon_traj_data[i].
-    
-    beacon_traj_data[i](0, j): Timestamp number j.
-    beacon_traj_data[i](1, j): x-position of agent i at time beacon_traj_data[i](0, j).
-    beacon_traj_data[i](2, j): y-position of agent i at time beacon_traj_data[i](0, j).
-    beacon_traj_data[i](3, j): x-velocity of agent i at time beacon_traj_data[i](0, j).
-    beacon_traj_data[i](4, j): y-velocity of agent i at time beacon_traj_data[i](0, j).
+    Trajectory data for each agent. The matrix for beacon with ID i is located
+    at beacon_traj_data[i]. Each column stores data for a single timestep.
     */
     MatrixXd *beacon_traj_data;
     map<ExpVecType, Vector2d>* exploration_vectors;
@@ -111,7 +106,7 @@ private:
     Vector2d get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_curr_neighs) const;
     Vector2d get_env_force_agent(Vector2d agent_pos, double agent_yaw) const;
     Vector2d get_obstacle_avoidance_vector(Vector2d agent_pos, double agent_yaw) const;
-    
+
     Matrix<double, 4, 2> get_sensed_ranges_and_angles(Vector2d agent_pos, double agent_yaw) const;
 
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
