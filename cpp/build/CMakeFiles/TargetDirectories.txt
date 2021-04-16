@@ -1,3 +1,0 @@
-/home/magnusb96/Desktop/MasterCppSim/cpp/build/CMakeFiles/rebuild_cache.dir
-/home/magnusb96/Desktop/MasterCppSim/cpp/build/CMakeFiles/app.dir
-/home/magnusb96/Desktop/MasterCppSim/cpp/build/CMakeFiles/edit_cache.dir

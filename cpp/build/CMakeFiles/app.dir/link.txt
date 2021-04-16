@@ -1,1 +1,0 @@
-/usr/bin/c++ -rdynamic CMakeFiles/app.dir/main.cpp.o CMakeFiles/app.dir/sim.cpp.o CMakeFiles/app.dir/env.cpp.o CMakeFiles/app.dir/range_ray.cpp.o CMakeFiles/app.dir/plotter.cpp.o CMakeFiles/app.dir/helper.cpp.o -o app  -lpython3.6m 
