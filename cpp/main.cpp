@@ -13,8 +13,6 @@ Vector2d get_force_from_beacon(Vector2d agent_pos, int beacon_id, Vector2d beaco
 }
 
 int main() {
-    int n_agents = 10;
-    int num_rays_per_range_sensor = 1;
 
     // Creating rectangular environment
     Matrix<double, 2, 4> m;
@@ -25,9 +23,12 @@ int main() {
     Env environment = Env(obstacles);
 
     // Initializing simulator and running
+    int n_agents = 40;
+    int num_rays_per_range_sensor = 1;
+    int agent_max_steps = 10000;
+
     double base_dt = 10e-3;
     double k_obs = 1;
-    int agent_max_steps = 100000;
     double force_saturation_limit = 4.0;
     double minimum_force_threshold = 0.01;
     
@@ -41,11 +42,12 @@ int main() {
         force_saturation_limit,
         minimum_force_threshold,
         agent_max_steps,
-        ExpVecType::NOMINAL
+        ExpVecType::TOTAL
     );
     simulator.simulate();
 
-    plot_config(simulator, to_string(n_agents) + "_agnt_rand_square_world");
+    plot_config(simulator, to_string(n_agents) + "_agnt_total_square_world");
+    plot_agent_force_vs_time(simulator, 40);
 
     return 0;
 }

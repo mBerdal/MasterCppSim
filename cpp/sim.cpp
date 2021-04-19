@@ -4,6 +4,12 @@
 
 #include <iostream>
 
+#define TWO_PI 2 * M_PI
+//#define double ang_diff = remainder(o_hat_angle - theta_nom, TWO_PI)
+
+double clamp_pm_pi(double ang) {
+    return remainder(ang, TWO_PI);
+}
 
 Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
                     Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double),
@@ -25,7 +31,7 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
     beacon_traj_data[0] = Matrix<double, NUM_TRAJ_DATA_POINTS, 1>::Zero();
 
     exploration_vectors = new map<ExpVecType, Vector2d>[1 + num_agents_to_deploy];
-    set_all_exp_vec_types_for_beacon(0, {});
+    set_all_exp_vec_types_for_beacon(0, {}, Vector2d::Zero());
 
 
     this->num_rays_per_range_sensor = num_rays_per_range_sensor;
@@ -65,8 +71,6 @@ void Simulator::simulate() {
             step_count++;
         }
 
-        cout << "Agent " << curr_deploying_agent_id << " landing after " << step_count << " steps\n";
-
         /* Removing unused data columns
         
         If deployment was haulted due to lack of neighbors before performing step,
@@ -88,9 +92,21 @@ void Simulator::simulate() {
             beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1)
         );
 
-        set_all_exp_vec_types_for_beacon(curr_deploying_agent_id, agent_neighbors_at_landing);
+        Vector2d o_hat_at_landing = beacon_traj_data[curr_deploying_agent_id].block(
+            O_HAT_X_IDX,
+            beacon_traj_data[curr_deploying_agent_id].cols()-1,
+            2,
+            1
+        );
+        
+        set_all_exp_vec_types_for_beacon(curr_deploying_agent_id, agent_neighbors_at_landing, o_hat_at_landing);
 
-        std::cout << "Agent " << curr_deploying_agent_id << " landed at\n" << beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1) << "\n";
+        cout << "Agent " << curr_deploying_agent_id << " landed at\n" << beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1)\
+        << "\nafter " << step_count << " steps. Neighbors at landing:\n<";
+        for (auto it=agent_neighbors_at_landing.begin(); it != agent_neighbors_at_landing.end(); ++it) {
+            cout << " " << *it;
+        }
+        cout << ">\n";
     }
 }
 
@@ -119,10 +135,8 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
         curr_deploying_agent_curr_neighs
     );
 
-    Vector2d F_e = get_env_force_agent(
-        curr_deploying_agent_pos,
-        curr_deploying_agent_yaw
-    );
+    Vector2d o_hat = get_obstacle_avoidance_vector(curr_deploying_agent_pos, curr_deploying_agent_yaw);
+    Vector2d F_e = get_env_force_agent(o_hat);
 
     Vector2d F_nominal = F_n + F_e;
     Vector2d F = clamp_vec(F_nominal, force_saturation_limit);
@@ -132,12 +146,15 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     
     Vector5d state_der;
     state_der << F(0), F(1), 0, 0, 0;
-    
+    /**
+     * TODO: Fix dynamic step size
+     **/
+    double F_n_change_norm = (beacon_traj_data[curr_deploying_agent_id].block(F_N_X_IDX, step_count, 2, 1) - F_n).norm();
     double F_e_norm = F_e.norm();
-    if (F_e_norm > 50) {
+    if (F_e_norm > 50 || F_n_change_norm > 5) {
         *dt_ptr = base_dt / 100.0;
     }
-    else if (F_e_norm > 10) {
+    else if (F_e_norm > 2) {
         *dt_ptr = base_dt / 10.0;
     }
 
@@ -147,6 +164,7 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     beacon_traj_data[curr_deploying_agent_id].block(F_N_X_IDX, step_count + 1, 2, 1) = F_n;
     beacon_traj_data[curr_deploying_agent_id].block(F_E_X_IDX, step_count + 1, 2, 1) = F_e;
     beacon_traj_data[curr_deploying_agent_id].block(F_X_IDX, step_count + 1, 2, 1) = F_nominal;
+    beacon_traj_data[curr_deploying_agent_id].block(O_HAT_X_IDX, step_count + 1, 2, 1) = o_hat;
     beacon_traj_data[curr_deploying_agent_id](TIMESTAMP_IDX, step_count + 1) = time;
     return NO_PROBLEM;
 }
@@ -165,9 +183,8 @@ Vector2d Simulator::get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_
     return F;
 }
 
-Vector2d Simulator::get_env_force_agent(Vector2d agent_pos, double agent_yaw) const {
-    Vector2d o_hat = get_obstacle_avoidance_vector(agent_pos, agent_yaw);
-    return k_obs * (1 / (RANGE_SENSOR_MAX_RANGE_METERS - o_hat.norm())) * o_hat;
+Vector2d Simulator::get_env_force_agent(Vector2d obstacle_avoidance_vec) const {
+    return k_obs * (1 / (RANGE_SENSOR_MAX_RANGE_METERS - obstacle_avoidance_vec.norm())) * obstacle_avoidance_vec;
 }
 
 Vector2d Simulator::get_obstacle_avoidance_vector(Vector2d agent_pos, double agent_yaw) const {
@@ -217,18 +234,42 @@ set<int> Simulator::get_agent_neighbors(int agent_id, Vector2d agent_pos) const 
     return neighs;
 }
 
-void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids){
-    exploration_vectors[beacon_id][ExpVecType::NOMINAL] = get_nominal_exploration_vector_for_beacon(
-            beacon_id, neighbors_at_landing_ids
-    );
-    Matrix2d R = Rotation2Dd((M_PI / 4.0) * RandomNumberGenerator::get_between(-1, 1)).toRotationMatrix();
-    exploration_vectors[beacon_id][ExpVecType::NOMINAL_RAND] = R*exploration_vectors[beacon_id][ExpVecType::NOMINAL];
+void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids, Vector2d obstacle_avoidance_vec){
+    double theta_neighs = get_neigh_induced_exploration_angle_for_beacon(beacon_id, neighbors_at_landing_ids);
+    exploration_vectors[beacon_id][ExpVecType::NEIGH_INDUCED] = Rotation2Dd(theta_neighs).toRotationMatrix()*Vector2d::UnitX();
+
+    double theta_nom = clamp_pm_pi(M_PI_4 * RandomNumberGenerator::get_between(-1, 1) + theta_neighs);
+    exploration_vectors[beacon_id][ExpVecType::NEIGH_INDUCED_RANDOM] = Rotation2Dd(theta_nom).toRotationMatrix()*Vector2d::UnitX();
+
+    double o_hat_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
+    double ang_diff = clamp_pm_pi(o_hat_angle - theta_nom);
+    double theta_obs = theta_nom;
+    if (ang_diff < -M_PI_2) {
+        theta_obs = o_hat_angle + M_PI_2;
+    }
+    else if (ang_diff > M_PI_2) {
+        theta_obs = o_hat_angle - M_PI_2;
+    }
+
+    double o_hat_norm = obstacle_avoidance_vec.norm();
+    if (o_hat_norm > 10e-7) {
+        exploration_vectors[beacon_id][ExpVecType::OBS_AVOIDANCE] = Rotation2Dd(theta_obs).toRotationMatrix()*Vector2d::UnitX();
+    }
+    else {
+        exploration_vectors[beacon_id][ExpVecType::OBS_AVOIDANCE] = Vector2d::Zero();
+    }
+
+    double w_ang = o_hat_norm / RANGE_SENSOR_MAX_RANGE_METERS;
+    double c = (1 - w_ang)*cos(theta_nom) + w_ang*cos(theta_obs);
+    double s = (1 - w_ang)*sin(theta_nom) + w_ang*sin(theta_obs);
+
+    exploration_vectors[beacon_id][ExpVecType::TOTAL] = Rotation2Dd(atan2(s, c)).toRotationMatrix()*Vector2d::UnitX();
 }
 
-Vector2d Simulator::get_nominal_exploration_vector_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids) const {
+double Simulator::get_neigh_induced_exploration_angle_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids) const {
     if (neighbors_at_landing_ids.size() == 0) {
-        cout << "Beacon " << beacon_id << " has no neighbors. Using unit x vector as exploration vector.\n";
-        return Vector2d::UnitX();
+        cout << "Beacon " << beacon_id << " has no neighbors. Using zero as exploration angle.\n";
+        return 0;
     }
 
     double sum_of_weights = 0;
@@ -239,8 +280,8 @@ Vector2d Simulator::get_nominal_exploration_vector_for_beacon(int beacon_id, set
     for (int neigh_id : neighbors_at_landing_ids) {
         weighted_avg_vec_to_neighs += ((neigh_id + 1) / sum_of_weights)*(
             beacon_traj_data[beacon_id].topRightCorner(2, 1) - beacon_traj_data[neigh_id].topRightCorner(2, 1)
-        );
+        ).normalized();
     }
-    return weighted_avg_vec_to_neighs.normalized();
+    return atan2(weighted_avg_vec_to_neighs(1), weighted_avg_vec_to_neighs(0));
 }
 

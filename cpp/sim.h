@@ -13,8 +13,10 @@ using namespace std;
 #define Vector5d Matrix<double, 5, 1>
 
 enum ExpVecType {
-    NOMINAL,
-    NOMINAL_RAND,
+    NEIGH_INDUCED,
+    NEIGH_INDUCED_RANDOM,
+    OBS_AVOIDANCE,
+    TOTAL,
 };
 
 class Simulator {
@@ -22,7 +24,7 @@ public:
     Simulator(double base_dt, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
             Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double),
             double force_saturation_limit = 4.0, double minimum_force_threshold = 0.01, int agent_max_steps = 100000,
-            ExpVecType use_exp_vec_type = ExpVecType::NOMINAL);
+            ExpVecType use_exp_vec_type = ExpVecType::NEIGH_INDUCED);
     
     void simulate();
 
@@ -37,7 +39,7 @@ public:
     inline double get_minimum_force_threshold() { return minimum_force_threshold; }
 
     static const int NUM_STATE_VARIABLES = 5;
-    static const int NUM_TRAJ_DATA_POINTS = 12;
+    static const int NUM_TRAJ_DATA_POINTS = 14;
 
     static const int POSITION_X_IDX = 0;
     static const int POSITION_Y_IDX = 1;
@@ -51,8 +53,10 @@ public:
     static const int F_E_Y_IDX = 8;
     static const int F_X_IDX = 9;
     static const int F_Y_IDX = 10;
+    static const int O_HAT_X_IDX = 11;
+    static const int O_HAT_Y_IDX = 12;
 
-    static const int TIMESTAMP_IDX = 11;
+    static const int TIMESTAMP_IDX = 13;
 
 
     MatrixXd get_beacon_traj_data(int agent_id) const { return beacon_traj_data[agent_id]; }
@@ -101,10 +105,11 @@ private:
     at beacon_traj_data[i]. Each column stores data for a single timestep.
     */
     MatrixXd *beacon_traj_data;
+
     map<ExpVecType, Vector2d>* exploration_vectors;
 
     Vector2d get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_curr_neighs) const;
-    Vector2d get_env_force_agent(Vector2d agent_pos, double agent_yaw) const;
+    Vector2d get_env_force_agent(Vector2d obstacle_avoidance_vec) const;
     Vector2d get_obstacle_avoidance_vector(Vector2d agent_pos, double agent_yaw) const;
 
     Matrix<double, 4, 2> get_sensed_ranges_and_angles(Vector2d agent_pos, double agent_yaw) const;
@@ -112,8 +117,8 @@ private:
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
 
     set<int> get_agent_neighbors(int agent_id, Vector2d agent_pos) const;
-    Vector2d get_nominal_exploration_vector_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids) const;
-    void set_all_exp_vec_types_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids);
+    double get_neigh_induced_exploration_angle_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids) const;
+    void set_all_exp_vec_types_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids, Vector2d obstacle_avoidance_vec);
 };
 
 #endif

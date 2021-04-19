@@ -8,6 +8,9 @@ namespace plt = matplotlibcpp;
 #define GREEN "#3d8045"
 #define DARK_GRAY "#8A8A8A"
 #define LITE_GRAY "#CDCDCD" 
+#define RED "#d12a2a"
+#define ORANGE "#ff9d00"
+#define PURPLE "#c4169c"
 
 void plot_line_segment(Vector2d start, Vector2d end, const map<string, string>& keywords = {{}}) {
   vector<double> x_range = {start(0), end(0)};
@@ -31,7 +34,8 @@ void plot_config(Simulator simulator, string run_name) {
     vector<double> end_x_pos;
     vector<double> end_y_pos;
     for (int beacon_id = 0; beacon_id < simulator.get_num_deployed_beacons(); beacon_id++) {
-        Vector2d beacon_final_pos = simulator.get_beacon_traj_data(beacon_id).topRightCorner(2, 1);
+        MatrixXd beacon_traj_data = simulator.get_beacon_traj_data(beacon_id);
+        Vector2d beacon_final_pos = beacon_traj_data.topRightCorner(2, 1);
         end_x_pos.push_back(beacon_final_pos(0));
         end_y_pos.push_back(beacon_final_pos(1));
 
@@ -46,20 +50,40 @@ void plot_config(Simulator simulator, string run_name) {
         */
         plot_line_segment(
           beacon_final_pos,
+          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::OBS_AVOIDANCE),
+          {{"color", RED}, {"label", R"($\mathbf{v}_{obs}$)"}}
+        );
+
+        plot_line_segment(
+          beacon_final_pos,
           beacon_final_pos + simulator.get_applied_beacon_exploration_dir(beacon_id),
-          {{"color", GREEN}, {"label", R"($\mathbf{v}$)"}}
+          {{"color", BLUE}, {"label", R"($\mathbf{v}$)"}}
         );
         plot_line_segment(
           beacon_final_pos,
-          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NOMINAL),
-          {{"color", BLUE}, {"label", R"($\mathbf{v}_{nom}$)"}}
+          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED),
+          {{"color", GREEN}, {"label", R"($\mathbf{v}_{neighs}$)"}}
+        );
+        plot_line_segment(
+          beacon_final_pos,
+          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED_RANDOM),
+          {{"color", PURPLE}, {"label", R"($\mathbf{v}_{neighs}$)"}}
+        );
+
+        /*
+        Plotting beacon obstacle avoidance vector
+        */
+        plot_line_segment(
+          beacon_final_pos,
+          beacon_final_pos + beacon_traj_data.block(Simulator::O_HAT_X_IDX, beacon_traj_data.cols() - 1, 2, 1),
+          {{"color", ORANGE}, {"label", R"($\hat{\mathbf{o}}$)"}}
         );
         /*
         Plotting beacon trajectory
         */
         plt::plot(
-            eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(beacon_id).row(Simulator::POSITION_X_IDX)),
-            eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(beacon_id).row(Simulator::POSITION_Y_IDX)),
+            eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_X_IDX)),
+            eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_Y_IDX)),
             {{"linestyle", "--"}, {"color", LITE_GRAY}}
         );
 
