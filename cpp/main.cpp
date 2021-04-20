@@ -23,7 +23,7 @@ int main() {
     Env environment = Env(obstacles);
 
     // Initializing simulator and running
-    int n_agents = 40;
+    int n_agents = 60;
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 10000;
 
@@ -47,7 +47,11 @@ int main() {
     simulator.simulate();
 
     plot_config(simulator, to_string(n_agents) + "_agnt_total_square_world");
-    plot_agent_force_vs_time(simulator, 40);
+    for (const int& agent_id : simulator.looping_agents) {
+        plot_agent_neigh_traj(simulator, agent_id);
+        plot_single_beacon_traj(simulator, agent_id, true, true);
+    }
+
 
     return 0;
 }

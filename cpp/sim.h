@@ -6,6 +6,7 @@
 #include "Eigen/Dense"
 using namespace Eigen;
 
+#include <tuple>
 #include <set>
 #include <map>
 using namespace std;
@@ -61,6 +62,10 @@ public:
 
     MatrixXd get_beacon_traj_data(int agent_id) const { return beacon_traj_data[agent_id]; }
     MatrixXd* get_all_traj_data() const { return beacon_traj_data; }
+
+    inline vector<tuple<double, vector<int>>> get_agent_neigh_traj(int agent_id) const { return neighbor_set_traj[agent_id - 1]; }
+
+    set<int> looping_agents;
     
 private:
 
@@ -97,7 +102,6 @@ private:
     double k_obs;
     ExpVecType use_exp_vec_type;
 
-
     Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double);
 
     /*
@@ -108,7 +112,12 @@ private:
 
     map<ExpVecType, Vector2d>* exploration_vectors;
 
-    Vector2d get_neigh_force_on_agent(Vector2d agent_pos, set<int> agent_curr_neighs) const;
+    /*
+    Each vector contains tuples of (time, set of neighbor ids)
+    */
+    vector<tuple<double, vector<int>>>* neighbor_set_traj;
+
+    Vector2d get_neigh_force_on_agent(Vector2d agent_pos, vector<int> agent_curr_neighs) const;
     Vector2d get_env_force_agent(Vector2d obstacle_avoidance_vec) const;
     Vector2d get_obstacle_avoidance_vector(Vector2d agent_pos, double agent_yaw) const;
 
@@ -116,9 +125,13 @@ private:
 
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
 
-    set<int> get_agent_neighbors(int agent_id, Vector2d agent_pos) const;
-    double get_neigh_induced_exploration_angle_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids) const;
-    void set_all_exp_vec_types_for_beacon(int beacon_id, set<int> neighbors_at_landing_ids, Vector2d obstacle_avoidance_vec);
+    vector<int> get_agent_neighbors(int agent_id, Vector2d agent_pos) const;
+    double get_neigh_induced_exploration_angle_for_beacon(int beacon_id, vector<int> neighbors_at_landing_ids) const;
+    void set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbors_at_landing_ids, Vector2d obstacle_avoidance_vec);
+
+    bool is_loop_detected(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs);
+    int get_index_of_encounter(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs) const;
+    int neighs_encountered_before_idx;
 };
 
 #endif

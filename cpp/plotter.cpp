@@ -2,15 +2,22 @@
 #include "matplotlib-cpp/matplotlibcpp.h"
 #include "helper.h"
 
+#include  <iomanip>
+
 namespace plt = matplotlibcpp;
 
-#define BLUE "#5865b8"
-#define GREEN "#3d8045"
-#define DARK_GRAY "#8A8A8A"
-#define LITE_GRAY "#CDCDCD" 
-#define RED "#d12a2a"
-#define ORANGE "#ff9d00"
-#define PURPLE "#c4169c"
+string get_interpolated_color(double interpolator, interpolation_color_t gradient) {
+  int r = floor(gradient.end_r*interpolator + gradient.base_r*(1-interpolator));
+  int g = floor(gradient.end_g*interpolator + gradient.base_g*(1-interpolator));
+  int b = floor(gradient.end_b*interpolator + gradient.base_b*(1-interpolator));
+
+  stringstream ss;
+  ss << "#"
+  << setfill('0') << setw(2) << right << hex << r
+  << setfill('0') << setw(2) << right << hex << g
+  << setfill('0') << setw(2) << right << hex << b;
+  return ss.str();
+}
 
 void plot_line_segment(Vector2d start, Vector2d end, const map<string, string>& keywords = {{}}) {
   vector<double> x_range = {start(0), end(0)};
@@ -18,96 +25,110 @@ void plot_line_segment(Vector2d start, Vector2d end, const map<string, string>& 
   plt::plot(x_range, y_range, keywords);
 }
 
-void plot_config(Simulator simulator, string run_name) {
-    plt::figure_size(500, 500);
-
-    /*
-    Plotting environment
-    */
+void plot_environment(Simulator simulator) {
     for (Wall const &w : simulator.get_environment().get_walls()) {
         plot_line_segment(
           w.get_start(),
           w.get_end(),
-          {{"color", DARK_GRAY}});
+          {{"color", DARK_GRAY}}
+        );
     }
+}
 
-    vector<double> end_x_pos;
-    vector<double> end_y_pos;
-    for (int beacon_id = 0; beacon_id < simulator.get_num_deployed_beacons(); beacon_id++) {
-        MatrixXd beacon_traj_data = simulator.get_beacon_traj_data(beacon_id);
-        Vector2d beacon_final_pos = beacon_traj_data.topRightCorner(2, 1);
-        end_x_pos.push_back(beacon_final_pos(0));
-        end_y_pos.push_back(beacon_final_pos(1));
-
-        plt::annotate(
-          to_string(beacon_id),
-          beacon_final_pos(0),
-          beacon_final_pos(1)
-        );
-
-        /*
-        Plotting beacon exploration direction
-        */
-        plot_line_segment(
-          beacon_final_pos,
-          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::OBS_AVOIDANCE),
-          {{"color", RED}, {"label", R"($\mathbf{v}_{obs}$)"}}
-        );
-
-        plot_line_segment(
-          beacon_final_pos,
-          beacon_final_pos + simulator.get_applied_beacon_exploration_dir(beacon_id),
-          {{"color", BLUE}, {"label", R"($\mathbf{v}$)"}}
-        );
-        plot_line_segment(
-          beacon_final_pos,
-          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED),
-          {{"color", GREEN}, {"label", R"($\mathbf{v}_{neighs}$)"}}
-        );
-        plot_line_segment(
-          beacon_final_pos,
-          beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED_RANDOM),
-          {{"color", PURPLE}, {"label", R"($\mathbf{v}_{neighs}$)"}}
-        );
-
-        /*
-        Plotting beacon obstacle avoidance vector
-        */
-        plot_line_segment(
-          beacon_final_pos,
-          beacon_final_pos + beacon_traj_data.block(Simulator::O_HAT_X_IDX, beacon_traj_data.cols() - 1, 2, 1),
-          {{"color", ORANGE}, {"label", R"($\hat{\mathbf{o}}$)"}}
-        );
-        /*
-        Plotting beacon trajectory
-        */
-        plt::plot(
-            eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_X_IDX)),
-            eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_Y_IDX)),
-            {{"linestyle", "--"}, {"color", LITE_GRAY}}
-        );
-
+void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool add_legend) {
+    if (show) {
+      plt::figure_size(500, 500);
+      plot_environment(simulator);
     }
+    
+    MatrixXd beacon_traj_data = simulator.get_beacon_traj_data(beacon_id);
+    Vector2d beacon_final_pos = beacon_traj_data.topRightCorner(2, 1);
+
+    plt::scatter(
+      vector<double>(1, beacon_final_pos(0)),
+      vector<double>(1, beacon_final_pos(1)),
+      SCATTER_DOT_SIZE,
+      {{"color", BLUE}}
+    );
+    plt::annotate(
+      to_string(beacon_id),
+      beacon_final_pos(0),
+      beacon_final_pos(1)
+    );
 
     /*
-    Plotting points at final positions of the beacons
+    Plotting beacon exploration direction
     */
-    plt::scatter(
-        end_x_pos,
-        end_y_pos,
-        40.0,
-        {{"color", BLUE}}
+    
+    plot_line_segment(
+      beacon_final_pos,
+      beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::OBS_AVOIDANCE),
+      {{"color", RED}, {"label", add_legend ? R"($\mathbf{v}_{obs}$)" : ""}}
     );
+
+    plot_line_segment(
+      beacon_final_pos,
+      beacon_final_pos + simulator.get_applied_beacon_exploration_dir(beacon_id),
+      {{"color", BLUE}, {"label", add_legend ? R"($\mathbf{v}$)" : ""}}
+    );
+    plot_line_segment(
+      beacon_final_pos,
+      beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED),
+      {{"color", GREEN}, {"label", add_legend ? R"($\mathbf{v}_{neighs}$)": ""}}
+    );
+    plot_line_segment(
+      beacon_final_pos,
+      beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED_RANDOM),
+      {{"color", PURPLE}, {"label",  add_legend ? R"($\mathbf{v}_{nom}$)" : ""}}
+    );
+
+    /*
+    Plotting beacon obstacle avoidance vector
+    */
+    plot_line_segment(
+      beacon_final_pos,
+      beacon_final_pos + beacon_traj_data.block(Simulator::O_HAT_X_IDX, beacon_traj_data.cols() - 1, 2, 1),
+      {{"color", ORANGE}, {"label",  add_legend ? R"($\hat{\mathbf{o}}$)" : ""}}
+    );
+    /*
+    Plotting beacon trajectory
+    */
+    plt::plot(
+        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_X_IDX)),
+        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_Y_IDX)),
+        {{"linestyle", "--"}, {"color", LITE_GRAY}}
+    );
+
+    if (show) {
+      plt::xlabel("x [m]");
+      plt::ylabel("y [m]");
+      plt::axis("tight");
+      plt::legend({{"loc", "upper right"}});
+      plt::show(true);
+    }
+}
+
+void plot_config(Simulator simulator, string run_name) {
+    plt::figure_size(500, 500);
+
+    plot_environment(simulator);
+    
+
+    for (int beacon_id = 0; beacon_id < simulator.get_num_deployed_beacons(); beacon_id++) {
+      plot_single_beacon_traj(simulator, beacon_id, false, beacon_id == 0);
+    }
 
     plt::xlabel("x [m]");
     plt::ylabel("y [m]");
     plt::axis("tight");
+    plt::legend({{"loc", "upper right"}});
 
     if (run_name != "") {
       plt::save(FIGURES_DIR + run_name + "_config.eps");
     }
     plt::show(true);
 }
+
 
 void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name) {
     plt::figure_size(500, 500);
@@ -117,19 +138,19 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name
     plt::plot(
       time,
       eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_N_X_IDX, Simulator::F_N_Y_IDX), all).colwise().norm()),
-      {{"label", "F_n"}}
+      {{"label", R"($||\mathbf{F}_{n}||$)"}}
     );
 
     plt::plot(
       time,
       eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_E_X_IDX, Simulator::F_E_Y_IDX), all).colwise().norm()),
-      {{"label", "F_e"}}
+      {{"label", R"($||\mathbf{F}_{e}||$)"}}
     );
 
     plt::plot(
       time,
       eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_X_IDX, Simulator::F_Y_IDX), all).colwise().norm()),
-      {{"label", "F"}}
+      {{"label", R"($||\mathbf{F}||$)"}}
     );
 
     plt::plot(
@@ -158,19 +179,19 @@ void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name
     plt::plot(
       dist,
       eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_N_X_IDX, Simulator::F_N_Y_IDX), all).colwise().norm()),
-      {{"label", "F_n"}}
+      {{"label", R"(||\mathbf{F}_{n}||)"}}
     );
 
     plt::plot(
       dist,
       eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_E_X_IDX, Simulator::F_E_Y_IDX), all).colwise().norm()),
-      {{"label", "F_e"}}
+      {{"label", R"(||\mathbf{F}_{e}||)"}}
     );
 
     plt::plot(
       dist,
       eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_X_IDX, Simulator::F_Y_IDX), all).colwise().norm()),
-      {{"label", "F"}}
+      {{"label", R"(||\mathbf{F}||)"}}
     );
 
     plt::plot(
@@ -189,6 +210,31 @@ void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name
       plt::save(FIGURES_DIR + run_name + "_force_v_dist_agent_" + to_string(agent_id) + ".eps");
     }
     plt::show(true);
+}
+
+void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
+    plt::figure_size(500, 500);
+    vector<tuple<double, vector<int>>> agent_neigh_traj = simulator.get_agent_neigh_traj(agent_id);
+    stringstream stream;
+    for (const tuple<double, vector<int>> & tuple : agent_neigh_traj) {
+      for (const int & neigh_id : get<1>(tuple)) {
+        plt::scatter(
+          vector<double>(1, get<0>(tuple)),
+          vector<int>(1, neigh_id),
+          SCATTER_DOT_SIZE,
+          {{"color", get_interpolated_color(neigh_id / (double) simulator.get_num_deployed_beacons(), DAT_GRADIENT)}}
+        );
+      }
+    }
+    plt::ylim(-1, simulator.get_num_deployed_agents() + 1);
+    plt::xlabel(R"(Time since $\nu_{1}$ deployed [s])");
+    plt::ylabel("Agent ID");
+    plt::title(R"(Neighbor set evolution for $\nu_{)" + to_string(agent_id) + R"(}$)");
+    plt::grid(true);
+    if (run_name != "") {
+      plt::save(FIGURES_DIR + run_name + "neigh_traj_agent_" + to_string(agent_id) + ".eps");
+    }
+    plt::show();
 }
 
 void plot_Xi_model() {
