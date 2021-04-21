@@ -26,7 +26,7 @@ struct interpolation_color_t {
 #define SCATTER_DOT_SIZE 40.0
 
 void plot_config(Simulator simulator, string run_name = "");
-void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show=false, bool add_legend=false);
+void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show=false, bool add_legend=false, string run_name="");
 void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name = "");
 void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name = "");
 void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name = "");

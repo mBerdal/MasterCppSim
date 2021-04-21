@@ -65,7 +65,7 @@ public:
 
     inline vector<tuple<double, vector<int>>> get_agent_neigh_traj(int agent_id) const { return neighbor_set_traj[agent_id - 1]; }
 
-    set<int> looping_agents;
+    map<int, pair<int, int>> agent_id_neigh_traj_idx_of_loop_start_end_map;
     
 private:
 
@@ -79,6 +79,7 @@ private:
     enum StepResult {
         NO_NEIGHBORS,
         ZERO_FORCE,
+        LOOPING,
         NO_PROBLEM
     };
 
@@ -125,11 +126,11 @@ private:
 
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
 
-    vector<int> get_agent_neighbors(int agent_id, Vector2d agent_pos) const;
-    double get_neigh_induced_exploration_angle_for_beacon(int beacon_id, vector<int> neighbors_at_landing_ids) const;
-    void set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbors_at_landing_ids, Vector2d obstacle_avoidance_vec);
+    vector<int> get_beacon_neighbors(int beacon_id, Vector2d beacon_pos, int max_neigh_id) const;
+    double get_neigh_induced_exploration_angle_for_beacon(int beacon_id, vector<int> neighbor_ids) const;
+    void set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbor_ids, Vector2d obstacle_avoidance_vec);
 
-    bool is_loop_detected(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs);
+    bool get_is_looping(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs);
     int get_index_of_encounter(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs) const;
     int neighs_encountered_before_idx;
 };

@@ -35,7 +35,7 @@ void plot_environment(Simulator simulator) {
     }
 }
 
-void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool add_legend) {
+void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool add_legend, string run_name) {
     if (show) {
       plt::figure_size(500, 500);
       plot_environment(simulator);
@@ -59,17 +59,11 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     /*
     Plotting beacon exploration direction
     */
-    
+    /*
     plot_line_segment(
       beacon_final_pos,
       beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::OBS_AVOIDANCE),
       {{"color", RED}, {"label", add_legend ? R"($\mathbf{v}_{obs}$)" : ""}}
-    );
-
-    plot_line_segment(
-      beacon_final_pos,
-      beacon_final_pos + simulator.get_applied_beacon_exploration_dir(beacon_id),
-      {{"color", BLUE}, {"label", add_legend ? R"($\mathbf{v}$)" : ""}}
     );
     plot_line_segment(
       beacon_final_pos,
@@ -81,15 +75,22 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
       beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED_RANDOM),
       {{"color", PURPLE}, {"label",  add_legend ? R"($\mathbf{v}_{nom}$)" : ""}}
     );
+    */
+
+    plot_line_segment(
+      beacon_final_pos,
+      beacon_final_pos + simulator.get_applied_beacon_exploration_dir(beacon_id),
+      {{"color", BLUE}, {"label", add_legend ? R"($\mathbf{v}$)" : ""}}
+    );
 
     /*
     Plotting beacon obstacle avoidance vector
-    */
     plot_line_segment(
       beacon_final_pos,
       beacon_final_pos + beacon_traj_data.block(Simulator::O_HAT_X_IDX, beacon_traj_data.cols() - 1, 2, 1),
       {{"color", ORANGE}, {"label",  add_legend ? R"($\hat{\mathbf{o}}$)" : ""}}
     );
+    */
     /*
     Plotting beacon trajectory
     */
@@ -99,11 +100,20 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
         {{"linestyle", "--"}, {"color", LITE_GRAY}}
     );
 
-    if (show) {
+    if (run_name != "" || show) {
       plt::xlabel("x [m]");
       plt::ylabel("y [m]");
       plt::axis("tight");
       plt::legend({{"loc", "upper right"}});
+    }
+
+    if (run_name != "") {
+      plt::axis("tight");
+      plt::save(
+        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_agent_" + to_string(beacon_id) + "_traj.eps"
+      );
+    }
+    if (show) {
       plt::show(true);
     }
 }
@@ -124,7 +134,10 @@ void plot_config(Simulator simulator, string run_name) {
     plt::legend({{"loc", "upper right"}});
 
     if (run_name != "") {
-      plt::save(FIGURES_DIR + run_name + "_config.eps");
+      plt::axis("tight");
+      plt::save(
+        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_config.eps"
+      );
     }
     plt::show(true);
 }
@@ -166,7 +179,10 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name
     plt::axis("tight");
 
     if (run_name != "") {
-      plt::save(FIGURES_DIR + run_name + "_force_v_time_agent_" + to_string(agent_id) + ".eps");
+      plt::axis("tight");
+        plt::save(
+          FIGURES_DIR + run_name + "_force_v_time_agent_" + to_string(agent_id) + ".eps"
+        );
     }
     plt::show(true);
 }
@@ -207,32 +223,51 @@ void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name
     plt::axis("tight");
 
     if (run_name != "") {
-      plt::save(FIGURES_DIR + run_name + "_force_v_dist_agent_" + to_string(agent_id) + ".eps");
+      plt::axis("tight");
+      plt::save(
+        FIGURES_DIR + run_name + "_force_v_dist_agent_" + to_string(agent_id) + ".eps"
+      );
     }
     plt::show(true);
 }
 
 void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
-    plt::figure_size(500, 500);
+    plt::figure_size((16 / 9.0) * 500, 500);
     vector<tuple<double, vector<int>>> agent_neigh_traj = simulator.get_agent_neigh_traj(agent_id);
     stringstream stream;
-    for (const tuple<double, vector<int>> & tuple : agent_neigh_traj) {
-      for (const int & neigh_id : get<1>(tuple)) {
+    bool agent_caught_looping = simulator.agent_id_neigh_traj_idx_of_loop_start_end_map.find(agent_id) != simulator.agent_id_neigh_traj_idx_of_loop_start_end_map.end();
+    string clr;
+    for (int i = 0; i < agent_neigh_traj.size(); i++) {
+      clr = "";
+      if (agent_caught_looping){
+        if (i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].first || i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].second) {
+          clr = "red";
+        }
+        else if (i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].first + 1 || i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].second + 1) {
+          clr = "green";
+        }
+      } 
+      for (const int & neigh_id : get<1>(agent_neigh_traj[i])) {
+        if (clr != "red" && clr != "green") {
+          clr = get_interpolated_color(neigh_id / (double) (agent_id - 1), DAT_GRADIENT);
+        }
         plt::scatter(
-          vector<double>(1, get<0>(tuple)),
+          vector<double>(1, get<0>(agent_neigh_traj[i])),
           vector<int>(1, neigh_id),
           SCATTER_DOT_SIZE,
-          {{"color", get_interpolated_color(neigh_id / (double) simulator.get_num_deployed_beacons(), DAT_GRADIENT)}}
+          {{"color", clr}}
         );
       }
     }
-    plt::ylim(-1, simulator.get_num_deployed_agents() + 1);
-    plt::xlabel(R"(Time since $\nu_{1}$ deployed [s])");
-    plt::ylabel("Agent ID");
+    plt::ylim(-1, agent_id);
+    plt::xlabel(R"(Elapsed time (since $\nu_{1}$ deployed) [s])");
+    plt::ylabel("ID of neighboring beacon");
     plt::title(R"(Neighbor set evolution for $\nu_{)" + to_string(agent_id) + R"(}$)");
-    plt::grid(true);
     if (run_name != "") {
-      plt::save(FIGURES_DIR + run_name + "neigh_traj_agent_" + to_string(agent_id) + ".eps");
+      plt::axis("tight");
+      plt::save(
+        FIGURES_DIR + run_name + "_neigh_traj_agent_" + to_string(agent_id) + ".eps"
+      );
     }
     plt::show();
 }

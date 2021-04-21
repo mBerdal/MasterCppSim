@@ -23,4 +23,18 @@ std::vector<double> eig_vec2std_vec(Vector<double, Dynamic> vec);
 
 Vector<double, Dynamic> clamp_vec (Vector<double, Dynamic> vec, double threshold);
 
+template<typename T>
+bool vectors_equal(std::vector<T> v1, std::vector<T> v2) {
+    int size = v1.size();
+    if (size != v2.size()) {
+        return false;
+    }
+    for (int i = 0; i < size; i++) {
+        if (v1[i] != v2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 #endif
