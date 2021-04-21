@@ -47,7 +47,7 @@ int main() {
     simulator.simulate();
 
     plot_config(simulator, "total_square_world");
-    for (const pair<int, pair<int, int>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
+    for (const pair<int, vector<pair<int, int>>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
         plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, "looping");
         plot_single_beacon_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, true, true, "looping");
     }

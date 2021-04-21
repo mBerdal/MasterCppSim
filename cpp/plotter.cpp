@@ -234,28 +234,45 @@ void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name
 void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
     plt::figure_size((16 / 9.0) * 500, 500);
     vector<tuple<double, vector<int>>> agent_neigh_traj = simulator.get_agent_neigh_traj(agent_id);
-    stringstream stream;
-    bool agent_caught_looping = simulator.agent_id_neigh_traj_idx_of_loop_start_end_map.find(agent_id) != simulator.agent_id_neigh_traj_idx_of_loop_start_end_map.end();
-    string clr;
     for (int i = 0; i < agent_neigh_traj.size(); i++) {
-      clr = "";
-      if (agent_caught_looping){
-        if (i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].first || i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].second) {
-          clr = "red";
-        }
-        else if (i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].first + 1 || i == simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id].second + 1) {
-          clr = "green";
-        }
-      } 
       for (const int & neigh_id : get<1>(agent_neigh_traj[i])) {
-        if (clr != "red" && clr != "green") {
-          clr = get_interpolated_color(neigh_id / (double) (agent_id - 1), DAT_GRADIENT);
-        }
         plt::scatter(
           vector<double>(1, get<0>(agent_neigh_traj[i])),
           vector<int>(1, neigh_id),
           SCATTER_DOT_SIZE,
-          {{"color", clr}}
+          {{"color", get_interpolated_color(neigh_id / (double) (agent_id - 1), DAT_GRADIENT)}}
+        );
+      }
+    }
+    if (simulator.agent_id_neigh_traj_idx_of_loop_start_end_map.count(agent_id) != 0) {
+      /*
+      Agent detected loop(s)
+      */
+      vector<pair<int, int>> loop_start_end = simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id];
+      for (const pair<int, int> & start_end : loop_start_end) {
+        plt::scatter(
+          vector<double>(get<1>(agent_neigh_traj[start_end.first]).size(), get<0>(agent_neigh_traj[start_end.first])),
+          get<1>(agent_neigh_traj[start_end.first]),
+          SCATTER_DOT_SIZE,
+          {{"color", "red"}}
+        );
+        plt::scatter(
+          vector<double>(get<1>(agent_neigh_traj[start_end.first + 1]).size(), get<0>(agent_neigh_traj[start_end.first + 1])),
+          get<1>(agent_neigh_traj[start_end.first + 1]),
+          SCATTER_DOT_SIZE,
+          {{"color", "green"}}
+        );
+        plt::scatter(
+          vector<double>(get<1>(agent_neigh_traj[start_end.second]).size(), get<0>(agent_neigh_traj[start_end.second])),
+          get<1>(agent_neigh_traj[start_end.second]),
+          SCATTER_DOT_SIZE,
+          {{"color", "red"}}
+        );
+        plt::scatter(
+          vector<double>(get<1>(agent_neigh_traj[start_end.second + 1]).size(), get<0>(agent_neigh_traj[start_end.second + 1])),
+          get<1>(agent_neigh_traj[start_end.second + 1]),
+          SCATTER_DOT_SIZE,
+          {{"color", "green"}}
         );
       }
     }

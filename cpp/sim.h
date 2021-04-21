@@ -65,7 +65,7 @@ public:
 
     inline vector<tuple<double, vector<int>>> get_agent_neigh_traj(int agent_id) const { return neighbor_set_traj[agent_id - 1]; }
 
-    map<int, pair<int, int>> agent_id_neigh_traj_idx_of_loop_start_end_map;
+    map<int, vector<pair<int, int>>> agent_id_neigh_traj_idx_of_loop_start_end_map;
     
 private:
 
@@ -133,6 +133,7 @@ private:
     bool get_is_looping(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs);
     int get_index_of_encounter(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs) const;
     int neighs_encountered_before_idx;
+    int neigh_look_back_horizon;
 };
 
 #endif

@@ -50,7 +50,7 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
 
     RandomNumberGenerator::seed();
 
-    agent_id_neigh_traj_idx_of_loop_start_end_map = map<int, pair<int, int>>();
+    agent_id_neigh_traj_idx_of_loop_start_end_map = map<int, vector<pair<int, int>>>();
 }
 
 void Simulator::simulate() {
@@ -68,6 +68,7 @@ void Simulator::simulate() {
 
         int step_count = 0;
         neighs_encountered_before_idx = -1;
+        neigh_look_back_horizon = 0;
         StepResult step_result = NO_PROBLEM;
         while (step_result == NO_PROBLEM && step_count < agent_max_steps) {
             dt = base_dt;
@@ -176,7 +177,7 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     beacon_traj_data[curr_deploying_agent_id].block(O_HAT_X_IDX, step_count + 1, 2, 1) = o_hat;
     beacon_traj_data[curr_deploying_agent_id](TIMESTAMP_IDX, step_count + 1) = time;
     
-    if (step_count == 0 || get<1>(neighbor_set_traj[curr_deploying_agent_id - 1].back()) != curr_deploying_agent_curr_neighs) {
+    if (step_count == 0 || !vectors_equal(get<1>(neighbor_set_traj[curr_deploying_agent_id - 1].back()), curr_deploying_agent_curr_neighs)) {
         /*
         Neighbor set changed (or first step)
         */
@@ -205,11 +206,15 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
                 );
                 set_all_exp_vec_types_for_beacon(neighbor_id, neighs_of_neigh, neigh_o_hat);
             }
-            agent_id_neigh_traj_idx_of_loop_start_end_map[curr_deploying_agent_id] = pair<int, int>(
-                neighs_encountered_before_idx, neighbor_set_traj[curr_deploying_agent_id - 1].size() - 2
+            agent_id_neigh_traj_idx_of_loop_start_end_map[curr_deploying_agent_id].push_back(
+                pair<int, int>(
+                    neighs_encountered_before_idx,
+                    neighbor_set_traj[curr_deploying_agent_id - 1].size() - 2
+                )
             );
+            neighs_encountered_before_idx = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1;
+            neigh_look_back_horizon = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1;
             cout << "LOOP DETECTED\n";
-            return LOOPING;
         }
     }
     return NO_PROBLEM;
@@ -335,20 +340,9 @@ double Simulator::get_neigh_induced_exploration_angle_for_beacon(int beacon_id, 
 
 int Simulator::get_index_of_encounter(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs) const {
     int num_curr_neighs = curr_deploying_agent_curr_neighs.size();
-    for (int i = 0; i < neighbor_set_traj[curr_deploying_agent_id - 1].size(); i++) {
+    for (int i = neigh_look_back_horizon; i < neighbor_set_traj[curr_deploying_agent_id - 1].size(); i++) {
         vector<int> recorded_neigh_set = get<1>(neighbor_set_traj[curr_deploying_agent_id - 1][i]);
-
-        bool all_equal = false;
-        if (recorded_neigh_set.size() == num_curr_neighs) {
-            all_equal = true;
-            for (int j=0; j < num_curr_neighs; j++) {
-                if (curr_deploying_agent_curr_neighs[j] != recorded_neigh_set[j]) {
-                    all_equal = false;
-                    break;
-                }
-            }
-        }
-        if (all_equal) {
+        if (vectors_equal(recorded_neigh_set, curr_deploying_agent_curr_neighs)) {
             return i;
         }
     }
