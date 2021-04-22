@@ -76,12 +76,16 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
       {{"color", PURPLE}, {"label",  add_legend ? R"($\mathbf{v}_{nom}$)" : ""}}
     );
     */
+    int num_exp_vecs = simulator.get_applied_beacon_exploration_dirs(beacon_id).size();
+    for (int i = 0; i < num_exp_vecs; i++) {
+      plot_line_segment(
+        beacon_final_pos,
+        beacon_final_pos + simulator.get_applied_beacon_exploration_dirs(beacon_id)[i],
+        {{"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_GRADIENT)},
+        {"label", add_legend ? R"($\mathbf{v}$)" : ""}}
+      );
+    }
 
-    plot_line_segment(
-      beacon_final_pos,
-      beacon_final_pos + simulator.get_applied_beacon_exploration_dir(beacon_id),
-      {{"color", BLUE}, {"label", add_legend ? R"($\mathbf{v}$)" : ""}}
-    );
 
     /*
     Plotting beacon obstacle avoidance vector
@@ -110,7 +114,7 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     if (run_name != "") {
       plt::axis("tight");
       plt::save(
-        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_agent_" + to_string(beacon_id) + "_traj.eps"
+        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_agent_" + to_string(beacon_id) + "_traj.pdf"
       );
     }
     if (show) {
@@ -136,7 +140,7 @@ void plot_config(Simulator simulator, string run_name) {
     if (run_name != "") {
       plt::axis("tight");
       plt::save(
-        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_config.eps"
+        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_config.pdf"
       );
     }
     plt::show(true);
@@ -181,7 +185,7 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name
     if (run_name != "") {
       plt::axis("tight");
         plt::save(
-          FIGURES_DIR + run_name + "_force_v_time_agent_" + to_string(agent_id) + ".eps"
+          FIGURES_DIR + run_name + "_force_v_time_agent_" + to_string(agent_id) + ".pdf"
         );
     }
     plt::show(true);
@@ -225,7 +229,7 @@ void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name
     if (run_name != "") {
       plt::axis("tight");
       plt::save(
-        FIGURES_DIR + run_name + "_force_v_dist_agent_" + to_string(agent_id) + ".eps"
+        FIGURES_DIR + run_name + "_force_v_dist_agent_" + to_string(agent_id) + ".pdf"
       );
     }
     plt::show(true);
@@ -233,11 +237,11 @@ void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name
 
 void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
     plt::figure_size((16 / 9.0) * 500, 500);
-    vector<tuple<double, vector<int>>> agent_neigh_traj = simulator.get_agent_neigh_traj(agent_id);
+    vector<pair<double, vector<int>>> agent_neigh_traj = simulator.get_agent_neigh_traj(agent_id);
     for (int i = 0; i < agent_neigh_traj.size(); i++) {
-      for (const int & neigh_id : get<1>(agent_neigh_traj[i])) {
+      for (const int & neigh_id : agent_neigh_traj[i].second) {
         plt::scatter(
-          vector<double>(1, get<0>(agent_neigh_traj[i])),
+          vector<double>(1, agent_neigh_traj[i].first),
           vector<int>(1, neigh_id),
           SCATTER_DOT_SIZE,
           {{"color", get_interpolated_color(neigh_id / (double) (agent_id - 1), DAT_GRADIENT)}}
@@ -251,26 +255,26 @@ void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
       vector<pair<int, int>> loop_start_end = simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id];
       for (const pair<int, int> & start_end : loop_start_end) {
         plt::scatter(
-          vector<double>(get<1>(agent_neigh_traj[start_end.first]).size(), get<0>(agent_neigh_traj[start_end.first])),
-          get<1>(agent_neigh_traj[start_end.first]),
+          vector<double>(agent_neigh_traj[start_end.first].second.size(), agent_neigh_traj[start_end.first].first),
+          agent_neigh_traj[start_end.first].second,
           SCATTER_DOT_SIZE,
           {{"color", "red"}}
         );
         plt::scatter(
-          vector<double>(get<1>(agent_neigh_traj[start_end.first + 1]).size(), get<0>(agent_neigh_traj[start_end.first + 1])),
-          get<1>(agent_neigh_traj[start_end.first + 1]),
+          vector<double>(agent_neigh_traj[start_end.first + 1].second.size(), agent_neigh_traj[start_end.first + 1].first),
+          agent_neigh_traj[start_end.first + 1].second,
           SCATTER_DOT_SIZE,
           {{"color", "green"}}
         );
         plt::scatter(
-          vector<double>(get<1>(agent_neigh_traj[start_end.second]).size(), get<0>(agent_neigh_traj[start_end.second])),
-          get<1>(agent_neigh_traj[start_end.second]),
+          vector<double>(agent_neigh_traj[start_end.second].second.size(), agent_neigh_traj[start_end.second].first),
+          agent_neigh_traj[start_end.second].second,
           SCATTER_DOT_SIZE,
           {{"color", "red"}}
         );
         plt::scatter(
-          vector<double>(get<1>(agent_neigh_traj[start_end.second + 1]).size(), get<0>(agent_neigh_traj[start_end.second + 1])),
-          get<1>(agent_neigh_traj[start_end.second + 1]),
+          vector<double>(agent_neigh_traj[start_end.second + 1].second.size(), agent_neigh_traj[start_end.second + 1].first),
+          agent_neigh_traj[start_end.second + 1].second,
           SCATTER_DOT_SIZE,
           {{"color", "green"}}
         );
@@ -283,7 +287,7 @@ void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
     if (run_name != "") {
       plt::axis("tight");
       plt::save(
-        FIGURES_DIR + run_name + "_neigh_traj_agent_" + to_string(agent_id) + ".eps"
+        FIGURES_DIR + run_name + "_neigh_traj_agent_" + to_string(agent_id) + ".pdf"
       );
     }
     plt::show();

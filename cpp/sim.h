@@ -33,8 +33,8 @@ public:
     inline int get_num_deployed_beacons() const { return 1 + num_agents_to_deploy; }
     inline int get_num_deployed_agents() const { return num_agents_to_deploy; }
 
-    inline Vector2d get_beacon_exploration_dir(int beacon_id, ExpVecType exp_vec_type) const { return exploration_vectors[beacon_id][exp_vec_type]; }
-    inline Vector2d get_applied_beacon_exploration_dir(int beacon_id) const { return exploration_vectors[beacon_id][use_exp_vec_type]; }
+    inline vector<Vector2d> get_beacon_exploration_dirs(int beacon_id, ExpVecType exp_vec_type) const { return exploration_vectors[beacon_id][exp_vec_type]; }
+    inline vector<Vector2d> get_applied_beacon_exploration_dirs(int beacon_id) const { return exploration_vectors[beacon_id][use_exp_vec_type]; }
 
     inline double get_force_saturation_limit() { return force_saturation_limit; }
     inline double get_minimum_force_threshold() { return minimum_force_threshold; }
@@ -63,7 +63,7 @@ public:
     MatrixXd get_beacon_traj_data(int agent_id) const { return beacon_traj_data[agent_id]; }
     MatrixXd* get_all_traj_data() const { return beacon_traj_data; }
 
-    inline vector<tuple<double, vector<int>>> get_agent_neigh_traj(int agent_id) const { return neighbor_set_traj[agent_id - 1]; }
+    inline vector<pair<double, vector<int>>> get_agent_neigh_traj(int agent_id) const { return neighbor_set_traj[agent_id - 1]; }
 
     map<int, vector<pair<int, int>>> agent_id_neigh_traj_idx_of_loop_start_end_map;
     
@@ -79,7 +79,6 @@ private:
     enum StepResult {
         NO_NEIGHBORS,
         ZERO_FORCE,
-        LOOPING,
         NO_PROBLEM
     };
 
@@ -111,12 +110,12 @@ private:
     */
     MatrixXd *beacon_traj_data;
 
-    map<ExpVecType, Vector2d>* exploration_vectors;
+    map<ExpVecType, vector<Vector2d>>* exploration_vectors;
 
     /*
     Each vector contains tuples of (time, set of neighbor ids)
     */
-    vector<tuple<double, vector<int>>>* neighbor_set_traj;
+    vector<pair<double, vector<int>>>* neighbor_set_traj;
 
     Vector2d get_neigh_force_on_agent(Vector2d agent_pos, vector<int> agent_curr_neighs) const;
     Vector2d get_env_force_agent(Vector2d obstacle_avoidance_vec) const;

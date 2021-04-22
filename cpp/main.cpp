@@ -25,7 +25,7 @@ int main() {
     // Initializing simulator and running
     int n_agents = 60;
     int num_rays_per_range_sensor = 1;
-    int agent_max_steps = 10000;
+    int agent_max_steps = 100000;
 
     double base_dt = 10e-3;
     double k_obs = 1;
@@ -46,7 +46,7 @@ int main() {
     );
     simulator.simulate();
 
-    plot_config(simulator, "total_square_world");
+    plot_config(simulator, "total_elongated_world");
     for (const pair<int, vector<pair<int, int>>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
         plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, "looping");
         plot_single_beacon_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, true, true, "looping");

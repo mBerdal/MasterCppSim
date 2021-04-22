@@ -2,10 +2,10 @@
 #include "helper.h"
 #include "range_ray.h"
 
-#include <iostream>
+#include <iostream> /* cout */
+#include <math.h>   /* pow */
 
 #define TWO_PI 2 * M_PI
-//#define double ang_diff = remainder(o_hat_angle - theta_nom, TWO_PI)
 
 double clamp_pm_pi(double ang) {
     return remainder(ang, TWO_PI);
@@ -30,9 +30,9 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
     beacon_traj_data = new MatrixXd[1 + num_agents_to_deploy];
     beacon_traj_data[0] = Matrix<double, NUM_TRAJ_DATA_POINTS, 1>::Zero();
 
-    neighbor_set_traj = new vector<tuple<double, vector<int>>>[num_agents_to_deploy];
+    neighbor_set_traj = new vector<pair<double, vector<int>>>[num_agents_to_deploy];
 
-    exploration_vectors = new map<ExpVecType, Vector2d>[1 + num_agents_to_deploy];
+    exploration_vectors = new map<ExpVecType, vector<Vector2d>>[1 + num_agents_to_deploy];
     set_all_exp_vec_types_for_beacon(0, {}, Vector2d::Zero());
 
 
@@ -88,9 +88,6 @@ void Simulator::simulate() {
             step_count--;
             time -= dt;
             cout << "Agent " << curr_deploying_agent_id << " landed due to a lack of neighbors\n";
-        }
-        else if (step_result == LOOPING) {
-            cout << "Agent " << curr_deploying_agent_id << " caught looping\n";
         }
 
         MatrixXd valid_traj_data = beacon_traj_data[curr_deploying_agent_id].leftCols(step_count);
@@ -164,8 +161,11 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     else if (F_e_norm > 2) {
         *dt_ptr = base_dt / 10.0;
     }
-    if (step_count > agent_max_steps / 2) {
+    if (step_count > 10000) {
         *dt_ptr = base_dt / 1000.0;
+    }
+    else if (step_count > 25000) {
+        *dt_ptr = base_dt / 10000.0;
     }
 
     beacon_traj_data[curr_deploying_agent_id].block(0, step_count + 1, NUM_STATE_VARIABLES, 1) = \
@@ -177,13 +177,13 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     beacon_traj_data[curr_deploying_agent_id].block(O_HAT_X_IDX, step_count + 1, 2, 1) = o_hat;
     beacon_traj_data[curr_deploying_agent_id](TIMESTAMP_IDX, step_count + 1) = time;
     
-    if (step_count == 0 || !vectors_equal(get<1>(neighbor_set_traj[curr_deploying_agent_id - 1].back()), curr_deploying_agent_curr_neighs)) {
+    if (step_count == 0 || !vectors_equal(neighbor_set_traj[curr_deploying_agent_id - 1].back().second, curr_deploying_agent_curr_neighs)) {
         /*
         Neighbor set changed (or first step)
         */
         bool is_looping = get_is_looping(curr_deploying_agent_id, curr_deploying_agent_curr_neighs);
         neighbor_set_traj[curr_deploying_agent_id - 1].push_back(
-            tuple<double, vector<int>>(
+            pair<double, vector<int>>(
                 beacon_traj_data[curr_deploying_agent_id](TIMESTAMP_IDX, step_count),
                 curr_deploying_agent_curr_neighs
             )
@@ -212,8 +212,8 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
                     neighbor_set_traj[curr_deploying_agent_id - 1].size() - 2
                 )
             );
+            neigh_look_back_horizon = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1; //neighs_encountered_before_idx;
             neighs_encountered_before_idx = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1;
-            neigh_look_back_horizon = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1;
             cout << "LOOP DETECTED\n";
         }
     }
@@ -229,7 +229,7 @@ Vector2d Simulator::get_neigh_force_on_agent(Vector2d agent_pos, vector<int> age
         double dist = (agent_pos - other_beacon_pos).norm();
         double xi = get_Xi_from_model(dist, xi_params.d_perf, xi_params.d_none, xi_params.xi_bar);
 
-        F += (*get_force_func)(agent_pos, beacon_id, other_beacon_pos, exploration_vectors[beacon_id][use_exp_vec_type], xi);
+        F += (*get_force_func)(agent_pos, beacon_id, other_beacon_pos, exploration_vectors[beacon_id][use_exp_vec_type].back(), xi);
     }
     return F;
 }
@@ -289,10 +289,10 @@ vector<int> Simulator::get_beacon_neighbors(int beacon_id, Vector2d beacon_pos, 
 
 void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbor_ids, Vector2d obstacle_avoidance_vec){
     double theta_neighs = get_neigh_induced_exploration_angle_for_beacon(beacon_id, neighbor_ids);
-    exploration_vectors[beacon_id][ExpVecType::NEIGH_INDUCED] = Rotation2Dd(theta_neighs).toRotationMatrix()*Vector2d::UnitX();
+    exploration_vectors[beacon_id][ExpVecType::NEIGH_INDUCED].push_back(Rotation2Dd(theta_neighs).toRotationMatrix()*Vector2d::UnitX());
 
     double theta_nom = clamp_pm_pi(M_PI_4 * RandomNumberGenerator::get_between(-1, 1) + theta_neighs);
-    exploration_vectors[beacon_id][ExpVecType::NEIGH_INDUCED_RANDOM] = Rotation2Dd(theta_nom).toRotationMatrix()*Vector2d::UnitX();
+    exploration_vectors[beacon_id][ExpVecType::NEIGH_INDUCED_RANDOM].push_back(Rotation2Dd(theta_nom).toRotationMatrix()*Vector2d::UnitX());
 
     double o_hat_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
     double ang_diff = clamp_pm_pi(o_hat_angle - theta_nom);
@@ -306,17 +306,17 @@ void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neig
 
     double o_hat_norm = obstacle_avoidance_vec.norm();
     if (o_hat_norm > 10e-7) {
-        exploration_vectors[beacon_id][ExpVecType::OBS_AVOIDANCE] = Rotation2Dd(theta_obs).toRotationMatrix()*Vector2d::UnitX();
+        exploration_vectors[beacon_id][ExpVecType::OBS_AVOIDANCE].push_back(Rotation2Dd(theta_obs).toRotationMatrix()*Vector2d::UnitX());
     }
     else {
-        exploration_vectors[beacon_id][ExpVecType::OBS_AVOIDANCE] = Vector2d::Zero();
+        exploration_vectors[beacon_id][ExpVecType::OBS_AVOIDANCE].push_back(Vector2d::Zero());
     }
 
     double w_ang = o_hat_norm / RANGE_SENSOR_MAX_RANGE_METERS;
     double c = (1 - w_ang)*cos(theta_nom) + w_ang*cos(theta_obs);
     double s = (1 - w_ang)*sin(theta_nom) + w_ang*sin(theta_obs);
 
-    exploration_vectors[beacon_id][ExpVecType::TOTAL] = Rotation2Dd(atan2(s, c)).toRotationMatrix()*Vector2d::UnitX();
+    exploration_vectors[beacon_id][ExpVecType::TOTAL].push_back(Rotation2Dd(atan2(s, c)).toRotationMatrix()*Vector2d::UnitX());
 }
 
 double Simulator::get_neigh_induced_exploration_angle_for_beacon(int beacon_id, vector<int> neighbor_ids) const {
@@ -334,6 +334,9 @@ double Simulator::get_neigh_induced_exploration_angle_for_beacon(int beacon_id, 
         weighted_avg_vec_to_neighs += ((neigh_id + 1) / sum_of_weights)*(
             beacon_traj_data[beacon_id].topRightCorner(2, 1) - beacon_traj_data[neigh_id].topRightCorner(2, 1)
         ).normalized();
+        //weighted_avg_vec_to_neighs += (
+        //    beacon_traj_data[beacon_id].topRightCorner(2, 1) - beacon_traj_data[neigh_id].topRightCorner(2, 1)
+        //).normalized();
     }
     return atan2(weighted_avg_vec_to_neighs(1), weighted_avg_vec_to_neighs(0));
 }
@@ -341,7 +344,7 @@ double Simulator::get_neigh_induced_exploration_angle_for_beacon(int beacon_id, 
 int Simulator::get_index_of_encounter(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs) const {
     int num_curr_neighs = curr_deploying_agent_curr_neighs.size();
     for (int i = neigh_look_back_horizon; i < neighbor_set_traj[curr_deploying_agent_id - 1].size(); i++) {
-        vector<int> recorded_neigh_set = get<1>(neighbor_set_traj[curr_deploying_agent_id - 1][i]);
+        vector<int> recorded_neigh_set = neighbor_set_traj[curr_deploying_agent_id - 1][i].second;
         if (vectors_equal(recorded_neigh_set, curr_deploying_agent_curr_neighs)) {
             return i;
         }
