@@ -4,6 +4,7 @@
 #include "matplotlib-cpp/matplotlibcpp.h"
 #include "sim.h"
 #include "env.h"
+#include "helper.h"
 
 using namespace std;
 
@@ -14,6 +15,7 @@ struct interpolation_color_t {
 };
 
 #define DAT_GRADIENT interpolation_color_t{0, 199, 199, 230, 0, 145}
+#define DAT_OTHER_GRADIENT interpolation_color_t{58, 168, 50, 181, 22, 22}
 
 #define BLUE "#5865b8"
 #define GREEN "#3d8045"
@@ -31,5 +33,6 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name
 void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name = "");
 void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name = "");
 void plot_Xi_model();
+void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<CircleSector> invalid_sectors, Vector2d o_hat);
 
 #endif

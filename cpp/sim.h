@@ -2,6 +2,7 @@
 #define SIMULATOR_H
 
 #include "env.h"
+#include "helper.h"
 
 #include "Eigen/Dense"
 using namespace Eigen;
@@ -16,14 +17,13 @@ using namespace std;
 enum ExpVecType {
     NEIGH_INDUCED,
     NEIGH_INDUCED_RANDOM,
-    OBS_AVOIDANCE,
     TOTAL,
 };
 
 class Simulator {
 public:
     Simulator(double base_dt, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
-            Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double),
+            Vector2d (*get_force_func)(Vector2d, int, Vector2d, double, double),
             double force_saturation_limit = 4.0, double minimum_force_threshold = 0.01, int agent_max_steps = 100000,
             ExpVecType use_exp_vec_type = ExpVecType::NEIGH_INDUCED);
     
@@ -33,8 +33,8 @@ public:
     inline int get_num_deployed_beacons() const { return 1 + num_agents_to_deploy; }
     inline int get_num_deployed_agents() const { return num_agents_to_deploy; }
 
-    inline vector<Vector2d> get_beacon_exploration_dirs(int beacon_id, ExpVecType exp_vec_type) const { return exploration_vectors[beacon_id][exp_vec_type]; }
-    inline vector<Vector2d> get_applied_beacon_exploration_dirs(int beacon_id) const { return exploration_vectors[beacon_id][use_exp_vec_type]; }
+    inline vector<double> get_beacon_exploration_angles(int beacon_id, ExpVecType exp_vec_type) const { return exploration_angles[beacon_id][exp_vec_type]; }
+    inline vector<double> get_applied_beacon_exploration_angles(int beacon_id) const { return exploration_angles[beacon_id][use_exp_vec_type]; }
 
     inline double get_force_saturation_limit() { return force_saturation_limit; }
     inline double get_minimum_force_threshold() { return minimum_force_threshold; }
@@ -102,7 +102,7 @@ private:
     double k_obs;
     ExpVecType use_exp_vec_type;
 
-    Vector2d (*get_force_func)(Vector2d, int, Vector2d, Vector2d, double);
+    Vector2d (*get_force_func)(Vector2d, int, Vector2d, double, double);
 
     /*
     Trajectory data for each agent. The matrix for beacon with ID i is located
@@ -110,7 +110,7 @@ private:
     */
     MatrixXd *beacon_traj_data;
 
-    map<ExpVecType, vector<Vector2d>>* exploration_vectors;
+    map<ExpVecType, vector<double>>* exploration_angles;
 
     /*
     Each vector contains tuples of (time, set of neighbor ids)
@@ -126,13 +126,20 @@ private:
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
 
     vector<int> get_beacon_neighbors(int beacon_id, Vector2d beacon_pos, int max_neigh_id) const;
-    double get_neigh_induced_exploration_angle_for_beacon(int beacon_id, vector<int> neighbor_ids) const;
     void set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbor_ids, Vector2d obstacle_avoidance_vec);
 
-    bool get_is_looping(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs);
-    int get_index_of_encounter(int curr_deploying_agent_id, vector<int> curr_deploying_agent_curr_neighs) const;
+    double get_avg_angle_away_from_neighs(int beacon_id, vector<int> neighbor_ids) const;
+    double get_wall_adjusted_angle(double nominal_angle, Vector2d obstacle_avoidance_vec) const;
+    
+    bool get_is_looping(int curr_deploying_agent_id);
+    int get_curr_neigh_set_index_of_encounter(int curr_deploying_agent_id) const;
     int neighs_encountered_before_idx;
     int neigh_look_back_horizon;
+
+    /*
+    NEW STUFF
+    */
+    CircleSector get_exploration_sector(int curr_deploying_agent_id, vector<int> agent_neighbors, Vector2d obstacle_avoidance_vec) const;
 };
 
 #endif

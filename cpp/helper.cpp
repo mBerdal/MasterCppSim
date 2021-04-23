@@ -33,3 +33,18 @@ Vector<double, Dynamic> clamp_vec (Vector<double, Dynamic> vec, double threshold
     }
     return (threshold / norm) * vec;
 }
+
+double wrap_max(double x, double max){
+    return fmod(max + fmod(x, max), max);
+}
+double wrap_min_max(double x, double min, double max) {
+    return min + wrap_max(x - min, max - min);
+}
+
+double clamp_pm_pi(double ang) {
+    return wrap_min_max(ang, -M_PI, M_PI);
+}
+
+double clamp_zero_pi(double ang) {
+    return wrap_min_max(ang, 0, 2 * M_PI);
+}

@@ -6,10 +6,10 @@
 
 using namespace std;
 
-Vector2d get_force_from_beacon(Vector2d agent_pos, int beacon_id, Vector2d beacon_pos, Vector2d beacon_exploration_dir, double beacon_xi) {
+Vector2d get_force_from_beacon(Vector2d agent_pos, int beacon_id, Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) {
     double k_i = beacon_id + 1;
     double a_i = 1;
-    return -k_i * (agent_pos - a_i * (beacon_pos + beacon_xi * beacon_exploration_dir));
+    return -k_i * (agent_pos - a_i * (beacon_pos + beacon_xi * Rotation2Dd(beacon_exploration_dir).toRotationMatrix() * Vector2d::UnitX()));
 }
 
 int main() {
@@ -23,7 +23,7 @@ int main() {
     Env environment = Env(obstacles);
 
     // Initializing simulator and running
-    int n_agents = 60;
+    int n_agents = 17;
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 100000;
 
@@ -46,12 +46,12 @@ int main() {
     );
     simulator.simulate();
 
-    plot_config(simulator, "total_elongated_world");
+    string general_name = "sector_xploration";
+    plot_config(simulator, general_name);
     for (const pair<int, vector<pair<int, int>>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
-        plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, "looping");
-        plot_single_beacon_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, true, true, "looping");
+        plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, general_name + "looping");
+        plot_single_beacon_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, true, true, general_name + "looping");
     }
-
 
     return 0;
 }

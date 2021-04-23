@@ -2,7 +2,9 @@
 #include "matplotlib-cpp/matplotlibcpp.h"
 #include "helper.h"
 
-#include  <iomanip>
+#include <iomanip>
+#include <string>
+#include <iostream>
 
 namespace plt = matplotlibcpp;
 
@@ -44,11 +46,24 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     MatrixXd beacon_traj_data = simulator.get_beacon_traj_data(beacon_id);
     Vector2d beacon_final_pos = beacon_traj_data.topRightCorner(2, 1);
 
+    /*
+    Plotting beacon trajectory
+    */
+    plt::plot(
+        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_X_IDX)),
+        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_Y_IDX)),
+        {{"linestyle", "--"}, {"color", LITE_GRAY}, {"alpha", "0,7"}}
+    );
+
+    /*
+    Plotting beacon final position
+    */
+
     plt::scatter(
       vector<double>(1, beacon_final_pos(0)),
       vector<double>(1, beacon_final_pos(1)),
       SCATTER_DOT_SIZE,
-      {{"color", BLUE}}
+      {{"color", BLUE}, {"zorder", "100"}}
     );
     plt::annotate(
       to_string(beacon_id),
@@ -59,50 +74,25 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     /*
     Plotting beacon exploration direction
     */
-    /*
-    plot_line_segment(
-      beacon_final_pos,
-      beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::OBS_AVOIDANCE),
-      {{"color", RED}, {"label", add_legend ? R"($\mathbf{v}_{obs}$)" : ""}}
-    );
-    plot_line_segment(
-      beacon_final_pos,
-      beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED),
-      {{"color", GREEN}, {"label", add_legend ? R"($\mathbf{v}_{neighs}$)": ""}}
-    );
-    plot_line_segment(
-      beacon_final_pos,
-      beacon_final_pos + simulator.get_beacon_exploration_dir(beacon_id, ExpVecType::NEIGH_INDUCED_RANDOM),
-      {{"color", PURPLE}, {"label",  add_legend ? R"($\mathbf{v}_{nom}$)" : ""}}
-    );
-    */
-    int num_exp_vecs = simulator.get_applied_beacon_exploration_dirs(beacon_id).size();
+    int num_exp_vecs = simulator.get_applied_beacon_exploration_angles(beacon_id).size();
     for (int i = 0; i < num_exp_vecs; i++) {
       plot_line_segment(
         beacon_final_pos,
-        beacon_final_pos + simulator.get_applied_beacon_exploration_dirs(beacon_id)[i],
-        {{"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_GRADIENT)},
-        {"label", add_legend ? R"($\mathbf{v}$)" : ""}}
+        beacon_final_pos + Rotation2Dd(simulator.get_beacon_exploration_angles(beacon_id, ExpVecType::NEIGH_INDUCED)[i]).toRotationMatrix() * Vector2d::UnitX(),
+        {
+          {"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_OTHER_GRADIENT)},
+          {"label", add_legend ? R"($\mathbf{v}_{n}$)" : ""}
+        }
+      );
+      plot_line_segment(
+        beacon_final_pos,
+        beacon_final_pos + Rotation2Dd(simulator.get_applied_beacon_exploration_angles(beacon_id)[i]).toRotationMatrix() * Vector2d::UnitX(),
+        {
+          {"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_GRADIENT)},
+          {"label", add_legend ? R"($\mathbf{v}$)" : ""}
+        }
       );
     }
-
-
-    /*
-    Plotting beacon obstacle avoidance vector
-    plot_line_segment(
-      beacon_final_pos,
-      beacon_final_pos + beacon_traj_data.block(Simulator::O_HAT_X_IDX, beacon_traj_data.cols() - 1, 2, 1),
-      {{"color", ORANGE}, {"label",  add_legend ? R"($\hat{\mathbf{o}}$)" : ""}}
-    );
-    */
-    /*
-    Plotting beacon trajectory
-    */
-    plt::plot(
-        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_X_IDX)),
-        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_Y_IDX)),
-        {{"linestyle", "--"}, {"color", LITE_GRAY}}
-    );
 
     if (run_name != "" || show) {
       plt::xlabel("x [m]");
@@ -309,4 +299,97 @@ void plot_Xi_model() {
   plt::figure_size(500, 500);
   plt::plot(dists, xis);
   plt::show(true);
+}
+
+void plot_sector(CircleSector sector, string clr) {
+  vector<double> perimeter_x;
+  vector<double> perimeter_y;
+  double start_ang = sector.start() < sector.end() ? sector.start() : clamp_pm_pi(sector.start());
+  double end_ang = sector.end();
+  for (double ang = start_ang; ang < end_ang; ang += 0.01) {
+    perimeter_x.push_back(cos(ang));
+    perimeter_y.push_back(sin(ang));
+  }
+  perimeter_x.push_back(cos(end_ang));
+  perimeter_y.push_back(sin(end_ang));
+  plt::plot(
+    perimeter_x,
+    perimeter_y,
+    {{"color", clr}, {"linewidth", "2"}}
+  );
+
+  vector<double> sector_x;
+  vector<double> sector_y;
+  for (double r = 0; r < 1; r += 0.01) {
+    sector_x.push_back(r*cos(start_ang));
+    sector_y.push_back(r*sin(start_ang));
+  }
+  plt::plot(
+    sector_x,
+    sector_y,
+    {{"color", clr}, {"linestyle", "--"}}
+  );
+}
+
+void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<CircleSector> invalid_sectors, Vector2d o_hat) {
+  vector<double> circle_points_x;
+  vector<double> circle_points_y;
+  for (const CircleSector sector : valid_sectors) {
+    plot_sector(sector, GREEN);
+    circle_points_x.push_back(cos(sector.start()));
+    circle_points_x.push_back(cos(sector.end()));
+    circle_points_y.push_back(sin(sector.start()));
+    circle_points_y.push_back(sin(sector.end()));
+  }
+  for (const CircleSector sector : invalid_sectors) {
+    plot_sector(sector, RED);
+    circle_points_x.push_back(cos(sector.start()));
+    circle_points_x.push_back(cos(sector.end()));
+    circle_points_y.push_back(sin(sector.start()));
+    circle_points_y.push_back(sin(sector.end()));
+  }
+  plt::scatter(
+    circle_points_x,
+    circle_points_y,
+    SCATTER_DOT_SIZE,
+    {{"color", "black"}, {"zorder", "100"}}
+  );
+
+  if (invalid_sectors.size() > 0) {
+    plt::arrow(0.0, 0.0, (double) o_hat(0), (double) o_hat(1), LITE_GRAY, LITE_GRAY, 0.1, 0.1);
+    plt::annotate(R"($\hat{\mathbf{o}}$)", o_hat(0) + 0.1, o_hat(1) + 0.1);
+  }
+
+  CircleSector largest_sector = *max_element(
+        valid_sectors.begin(),
+        valid_sectors.end(),
+        CircleSector::cmp
+  );
+  Vector2d tmp(
+    cos(largest_sector.get_angle_bisector()),
+    sin(largest_sector.get_angle_bisector())
+  );
+
+  plt::plot(
+    {0, 1}, {0, 0}, {{"color", LITE_GRAY}, {"linestyle", "--"}}
+  );
+  vector<double> ang_x;
+  vector<double> ang_y;
+  double max_ang = clamp_zero_pi(largest_sector.get_angle_bisector());
+  for (double theta = 0; theta <= max_ang; theta += 0.01) {
+    ang_x.push_back(0.2*cos(theta));
+    ang_y.push_back(0.2*sin(theta));
+  }
+  plt::plot(ang_x, ang_y, {{"color", "black"}});
+  plt::annotate(
+    R"($\theta$)",
+    0.2*cos(max_ang / 2.0) + 0.05,
+    0.2*sin(max_ang / 2.0) + 0.05
+  );
+
+  plot_line_segment(Vector2d::Zero(), tmp, {{"color", "black"}});
+
+  plt::title(R"(Sectors for agent $\nu_{)" + to_string(beacon_id) + R"(}$)");
+  plt::axis("equal");
+  plt::show();
 }
