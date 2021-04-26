@@ -327,8 +327,10 @@ void plot_Xi_model() {
 void plot_sector(CircleSector sector, string clr) {
   vector<double> perimeter_x;
   vector<double> perimeter_y;
-  double start_ang = sector.start() < sector.end() ? sector.start() : clamp_pm_pi(sector.start());
-  double end_ang = sector.end();
+
+  double start_ang = sector.start();
+  double end_ang = sector.end() + (start_ang > end_ang ? 2 * M_PI : 0);
+
   for (double ang = start_ang; ang < end_ang; ang += 0.01) {
     perimeter_x.push_back(cos(ang));
     perimeter_y.push_back(sin(ang));
@@ -396,14 +398,14 @@ void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<Circ
   plt::plot(
     {0, 1}, {0, 0}, {{"color", LITE_GRAY}, {"linestyle", "--"}}
   );
-  vector<double> ang_x;
-  vector<double> ang_y;
-  double max_ang = clamp_zero_pi(largest_sector.get_angle_bisector());
+  vector<double> bisector_ang_x;
+  vector<double> bisector_ang_y;
+  double max_ang = largest_sector.get_angle_bisector();
   for (double theta = 0; theta <= max_ang; theta += 0.01) {
-    ang_x.push_back(0.2*cos(theta));
-    ang_y.push_back(0.2*sin(theta));
+    bisector_ang_x.push_back(0.2*cos(theta));
+    bisector_ang_y.push_back(0.2*sin(theta));
   }
-  plt::plot(ang_x, ang_y, {{"color", "black"}});
+  plt::plot(bisector_ang_x, bisector_ang_y, {{"color", "black"}});
   plt::annotate(
     R"($\theta$)",
     0.2*cos(max_ang / 2.0) + 0.05,

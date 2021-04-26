@@ -37,7 +37,7 @@ bool vectors_equal(std::vector<T> v1, std::vector<T> v2) {
 }
 
 double clamp_pm_pi(double ang);
-double clamp_zero_pi(double ang);
+double clamp_zero_two_pi(double ang);
 
 class CircleSector {
 private:
@@ -45,10 +45,10 @@ private:
     double end_ang;
 public:
     CircleSector(double start_ang, double end_ang) : start_ang(start_ang), end_ang(end_ang) {}
-    inline double get_central_angle() const { return (end_ang > start_ang) ? end_ang - start_ang : end_ang - start_ang + 2 * M_PI; }
+    inline double get_central_angle() const { return end_ang > start_ang ? end_ang - start_ang : end_ang - start_ang + 2 * M_PI; }
     inline double start() const {return start_ang; }
     inline double end() const {return end_ang; }
-    inline double get_angle_bisector() const { return start_ang == end_ang ? start_ang : start_ang + 0.5 * get_central_angle(); }
+    inline double get_angle_bisector() const { return clamp_zero_two_pi(start_ang == end_ang ? start_ang : start_ang + 0.5 * get_central_angle()); }
 
     static bool cmp(const CircleSector & lhs, const CircleSector & rhs) { return lhs.get_central_angle() < rhs.get_central_angle(); }
 };

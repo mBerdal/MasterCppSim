@@ -46,6 +46,6 @@ double clamp_pm_pi(double ang) {
     return wrap_min_max(ang, -M_PI, M_PI);
 }
 
-double clamp_zero_pi(double ang) {
+double clamp_zero_two_pi(double ang) {
     return wrap_min_max(ang, 0, 2 * M_PI);
 }

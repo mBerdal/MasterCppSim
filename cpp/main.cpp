@@ -25,7 +25,7 @@ int main() {
     Env environment = Env(obstacles);
 
     // Initializing simulator and running
-    int n_agents = 17;
+    int n_agents = 89;
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 100000;
 
@@ -48,7 +48,7 @@ int main() {
     );
     simulator.simulate();
 
-    string general_name = "sector_xploration";
+    string general_name = "sector_deterministic__xploration";
     plot_config(simulator, general_name);
     for (const pair<int, vector<pair<int, int>>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
         plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, general_name + "looping");

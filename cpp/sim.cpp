@@ -26,7 +26,7 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
     this->minimum_force_threshold = minimum_force_threshold;
     this->agent_max_steps = agent_max_steps;
     this->use_exp_vec_type = use_exp_vec_type;
-    
+
     beacon_traj_data = new eig::MatrixXd[1 + num_agents_to_deploy];
     beacon_traj_data[0] = eig::Matrix<double, NUM_TRAJ_DATA_POINTS, 1>::Zero();
 
@@ -108,7 +108,7 @@ void Simulator::simulate() {
 
         set_all_exp_vec_types_for_beacon(curr_deploying_agent_id, agent_neighbors_at_landing, o_hat_at_landing);
         cout << "Agent " << curr_deploying_agent_id << " landed after " << step_count << " steps\n";
-        cout << "With " << agent_neighbors_at_landing.size() << " neighbor\n";
+        cout << "With " << agent_neighbors_at_landing.size() << " neighbors.\n";
 
     }
 }
@@ -197,7 +197,7 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
             /*
             For all neighbors, recalculate exploration angle
             */
-            cout << "neighs at loop\n";
+            cout << "Neighs at loop\n";
             for (const int & neighbor_id : curr_deploying_agent_curr_neighs) {
                 cout << neighbor_id << "\n";
                 vector<int> neighs_of_neigh = get_beacon_neighbors(
@@ -219,7 +219,7 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
                     neighbor_set_traj[curr_deploying_agent_id - 1].size() - 2
                 )
             );
-            neigh_look_back_horizon = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1; //neighs_encountered_before_idx;
+            neigh_look_back_horizon = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1;
             neighs_encountered_before_idx = neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1;
             cout << "LOOP DETECTED\n";
         }
@@ -240,8 +240,8 @@ CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vect
 
     if (avoid_obstacle) {
         double obstacle_avoidance_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
-        sector_max_bound = clamp_zero_pi(obstacle_avoidance_angle + M_PI_2);
-        sector_min_bound = clamp_zero_pi(obstacle_avoidance_angle - M_PI_2);
+        sector_max_bound = clamp_zero_two_pi(obstacle_avoidance_angle + M_PI_2);
+        sector_min_bound = clamp_zero_two_pi(obstacle_avoidance_angle - M_PI_2);
         angles.push_back(sector_max_bound);
         angles.push_back(sector_min_bound);
     }
@@ -252,7 +252,7 @@ CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vect
             beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1)
         );
         angles.push_back(
-            clamp_zero_pi(atan2(vec_to_neigh(1), vec_to_neigh(0)))
+            clamp_zero_two_pi(atan2(vec_to_neigh(1), vec_to_neigh(0)))
         );
     }
     int num_sectors = num_neighs + (avoid_obstacle ? 2 : 0);
@@ -284,9 +284,7 @@ CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vect
         valid_sectors.end(),
         CircleSector::cmp
     );
-    if (curr_deploying_agent_id == 17) {
-        plot_sectors(curr_deploying_agent_id, valid_sectors, invalid_sectors, obstacle_avoidance_vec);
-    }
+    //plot_sectors(curr_deploying_agent_id, valid_sectors, invalid_sectors, obstacle_avoidance_vec);
     return valid_sector_with_max_central_angle;
 }
 
@@ -359,6 +357,11 @@ vector<int> Simulator::get_beacon_neighbors(int beacon_id, eig::Vector2d beacon_
 
 void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbor_ids, eig::Vector2d obstacle_avoidance_vec){
     CircleSector exploration_sector = get_exploration_sector(beacon_id, neighbor_ids, obstacle_avoidance_vec);
+
+    double rand = RandomNumberGenerator::get_between(-1, 1);
+    double delta_angle_max = exploration_sector.get_central_angle() / 4.0;
+    double rand_angle_in_sector = exploration_sector.get_angle_bisector() + rand * delta_angle_max;
+    
     exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED].push_back(
         exploration_sector.get_angle_bisector()
     );
@@ -383,7 +386,6 @@ double Simulator::get_avg_angle_away_from_neighs(int beacon_id, vector<int> neig
 }
 
 int Simulator::get_curr_neigh_set_index_of_encounter(int curr_deploying_agent_id) const {
-    int num_curr_neighs = neighbor_set_traj[curr_deploying_agent_id - 1].back().second.size();
     for (int i = neigh_look_back_horizon; i < neighbor_set_traj[curr_deploying_agent_id - 1].size() - 1; i++) {
         vector<int> recorded_neigh_set = neighbor_set_traj[curr_deploying_agent_id - 1][i].second;
         if (vectors_equal(recorded_neigh_set, neighbor_set_traj[curr_deploying_agent_id - 1].back().second)) {
@@ -403,7 +405,7 @@ bool Simulator::get_is_looping(int curr_deploying_agent_id) {
     }
     else {
         /*
-        Some previous neighbor set has been encountered before, and is located at neighbor_set_traj[curr_deploying_agent_id - 1][neighs_encountered_before_idx].
+        Some previous neighbor set has been encountered before, and is located at neighbor_set_traj[curr_deploying_agent_id - 1][neighs_encountered_before_idx .
         If curr_deploying_agent_curr_neighs has been encountered before, and was encountered just after the *previous* previously encountered
         neighbor set, we are going in loop.
         */
@@ -420,19 +422,10 @@ bool Simulator::get_is_looping(int curr_deploying_agent_id) {
 
 double Simulator::get_wall_adjusted_angle(double nominal_angle, eig::Vector2d obstacle_avoidance_vec) const {
     double o_hat_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
-    double ang_diff = clamp_pm_pi(o_hat_angle - nominal_angle);
-    double theta_obs = nominal_angle;
-    if (ang_diff < -M_PI_2) {
-        theta_obs = o_hat_angle + M_PI_2;
-    }
-    else if (ang_diff > M_PI_2) {
-        theta_obs = o_hat_angle - M_PI_2;
-    }
-
     double o_hat_norm = obstacle_avoidance_vec.norm();
 
     double w_ang = o_hat_norm / RANGE_SENSOR_MAX_RANGE_METERS;
-    double c = (1 - w_ang)*cos(nominal_angle) + w_ang*cos(theta_obs);
-    double s = (1 - w_ang)*sin(nominal_angle) + w_ang*sin(theta_obs);
+    double c = (1 - w_ang)*cos(nominal_angle) + w_ang*cos(o_hat_angle);
+    double s = (1 - w_ang)*sin(nominal_angle) + w_ang*sin(o_hat_angle);
     return atan2(s, c);
 }
