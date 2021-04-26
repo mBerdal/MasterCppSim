@@ -134,6 +134,7 @@ private:
     NEW STUFF
     */
     CircleSector get_exploration_sector(int curr_deploying_agent_id, std::vector<int> agent_neighbors, Eigen::Vector2d obstacle_avoidance_vec) const;
+    void compute_beacon_exploration_dir(int beacon_id, int max_neigh_id);
 };
 
 #endif
