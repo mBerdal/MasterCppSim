@@ -54,5 +54,8 @@
         "typeinfo": "cpp",
         "iomanip": "cpp",
         "any": "cpp"
-    }
+    },
+    "cSpell.words": [
+        "eigen"
+    ]
 }

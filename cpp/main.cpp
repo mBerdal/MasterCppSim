@@ -3,22 +3,24 @@
 #include "plotter.h"
 #include <iostream>
 #include <list>
+#include "Eigen/Dense"
 
 using namespace std;
+namespace eig = Eigen;
 
-Vector2d get_force_from_beacon(Vector2d agent_pos, int beacon_id, Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) {
+eig::Vector2d get_force_from_beacon(eig::Vector2d agent_pos, int beacon_id, eig::Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) {
     double k_i = beacon_id + 1;
     double a_i = 1;
-    return -k_i * (agent_pos - a_i * (beacon_pos + beacon_xi * Rotation2Dd(beacon_exploration_dir).toRotationMatrix() * Vector2d::UnitX()));
+    return -k_i * (agent_pos - a_i * (beacon_pos + beacon_xi * eig::Rotation2Dd(beacon_exploration_dir).toRotationMatrix() * eig::Vector2d::UnitX()));
 }
 
 int main() {
 
     // Creating rectangular environment
-    Matrix<double, 2, 4> m;
+    eig::Matrix<double, 2, 4> m;
     m << -1, 10, 10, -1,
         -1, -1, 10, 10;
-    list<Matrix<double, 2, Dynamic>> obstacles;
+    list<eig::Matrix<double, 2, eig::Dynamic>> obstacles;
     obstacles.push_back(m);
     Env environment = Env(obstacles);
 

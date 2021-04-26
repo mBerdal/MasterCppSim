@@ -1,4 +1,5 @@
 #include "helper.h"
+namespace eig = Eigen;
 
 double RandomNumberGenerator::get_between(double low, double high) {
         double random = rand() / (double) RAND_MAX;
@@ -18,15 +19,15 @@ double get_Xi_from_model(double d, double d_perf, double d_none, double xi_bar) 
     return (xi_bar / 2.0)*(1 + cos(omega * d + phi));
 }
 
-double cross(Matrix<double, 2, 1> a, Matrix<double, 2, 1> b) {
+double cross(eig::Matrix<double, 2, 1> a, eig::Matrix<double, 2, 1> b) {
     return a(0) * b(1) - a(1) * b(0);
 }
 
-std::vector<double> eig_vec2std_vec(Vector<double, Dynamic> vec) {
+std::vector<double> eig_vec2std_vec(eig::VectorXd vec) {
     return std::vector<double>(vec.data(), vec.data() + vec.size());
 }
 
-Vector<double, Dynamic> clamp_vec (Vector<double, Dynamic> vec, double threshold) {
+eig::VectorXd clamp_vec (eig::VectorXd vec, double threshold) {
     double norm = vec.norm();
     if (norm < threshold) {
         return vec;

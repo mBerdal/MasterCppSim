@@ -1,12 +1,35 @@
 #include "plotter.h"
-#include "matplotlib-cpp/matplotlibcpp.h"
 #include "helper.h"
+#include "env.h"
+
+#include "matplotlib-cpp/matplotlibcpp.h"
 
 #include <iomanip>
 #include <string>
 #include <iostream>
 
+#define FIGURES_DIR "../../figures/"
+
+struct interpolation_color_t {
+  int base_r, base_g, base_b, end_r, end_g, end_b;
+};
+
+#define DAT_GRADIENT interpolation_color_t{0, 199, 199, 230, 0, 145}
+#define DAT_OTHER_GRADIENT interpolation_color_t{58, 168, 50, 181, 22, 22}
+
+#define BLUE "#5865b8"
+#define GREEN "#3d8045"
+#define DARK_GRAY "#8A8A8A"
+#define LITE_GRAY "#CDCDCD" 
+#define RED "#d12a2a"
+#define ORANGE "#ff9d00"
+#define PURPLE "#c4169c"
+
+#define SCATTER_DOT_SIZE 40.0
+
+namespace eig = Eigen;
 namespace plt = matplotlibcpp;
+using namespace std;
 
 string get_interpolated_color(double interpolator, interpolation_color_t gradient) {
   int r = floor(gradient.end_r*interpolator + gradient.base_r*(1-interpolator));
@@ -21,7 +44,7 @@ string get_interpolated_color(double interpolator, interpolation_color_t gradien
   return ss.str();
 }
 
-void plot_line_segment(Vector2d start, Vector2d end, const map<string, string>& keywords = {{}}) {
+void plot_line_segment(eig::Vector2d start, eig::Vector2d end, const map<string, string>& keywords = {{}}) {
   vector<double> x_range = {start(0), end(0)};
   vector<double> y_range = {start(1), end(1)};
   plt::plot(x_range, y_range, keywords);
@@ -43,15 +66,15 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
       plot_environment(simulator);
     }
     
-    MatrixXd beacon_traj_data = simulator.get_beacon_traj_data(beacon_id);
-    Vector2d beacon_final_pos = beacon_traj_data.topRightCorner(2, 1);
+    eig::MatrixXd beacon_traj_data = simulator.get_beacon_traj_data(beacon_id);
+    eig::Vector2d beacon_final_pos = beacon_traj_data.topRightCorner(2, 1);
 
     /*
     Plotting beacon trajectory
     */
     plt::plot(
-        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_X_IDX)),
-        eig_vec2std_vec((VectorXd) beacon_traj_data.row(Simulator::POSITION_Y_IDX)),
+        eig_vec2std_vec((eig::VectorXd) beacon_traj_data.row(Simulator::POSITION_X_IDX)),
+        eig_vec2std_vec((eig::VectorXd) beacon_traj_data.row(Simulator::POSITION_Y_IDX)),
         {{"linestyle", "--"}, {"color", LITE_GRAY}, {"alpha", "0,7"}}
     );
 
@@ -78,7 +101,7 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     for (int i = 0; i < num_exp_vecs; i++) {
       plot_line_segment(
         beacon_final_pos,
-        beacon_final_pos + Rotation2Dd(simulator.get_beacon_exploration_angles(beacon_id, ExpVecType::NEIGH_INDUCED)[i]).toRotationMatrix() * Vector2d::UnitX(),
+        beacon_final_pos + eig::Rotation2Dd(simulator.get_beacon_exploration_angles(beacon_id, ExpVecType::NEIGH_INDUCED)[i]).toRotationMatrix() * eig::Vector2d::UnitX(),
         {
           {"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_OTHER_GRADIENT)},
           {"label", add_legend ? R"($\mathbf{v}_{n}$)" : ""}
@@ -86,7 +109,7 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
       );
       plot_line_segment(
         beacon_final_pos,
-        beacon_final_pos + Rotation2Dd(simulator.get_applied_beacon_exploration_angles(beacon_id)[i]).toRotationMatrix() * Vector2d::UnitX(),
+        beacon_final_pos + eig::Rotation2Dd(simulator.get_applied_beacon_exploration_angles(beacon_id)[i]).toRotationMatrix() * eig::Vector2d::UnitX(),
         {
           {"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_GRADIENT)},
           {"label", add_legend ? R"($\mathbf{v}$)" : ""}
@@ -140,23 +163,23 @@ void plot_config(Simulator simulator, string run_name) {
 void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name) {
     plt::figure_size(500, 500);
 
-    vector<double> time = eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id).row(Simulator::TIMESTAMP_IDX));
+    vector<double> time = eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).row(Simulator::TIMESTAMP_IDX));
 
     plt::plot(
       time,
-      eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_N_X_IDX, Simulator::F_N_Y_IDX), all).colwise().norm()),
+      eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::F_N_X_IDX, 2).colwise().norm()),
       {{"label", R"($||\mathbf{F}_{n}||$)"}}
     );
 
     plt::plot(
       time,
-      eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_E_X_IDX, Simulator::F_E_Y_IDX), all).colwise().norm()),
+      eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::F_E_X_IDX, 2).colwise().norm()),
       {{"label", R"($||\mathbf{F}_{e}||$)"}}
     );
 
     plt::plot(
       time,
-      eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_X_IDX, Simulator::F_Y_IDX), all).colwise().norm()),
+      eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::F_X_IDX, 2).colwise().norm()),
       {{"label", R"($||\mathbf{F}||$)"}}
     );
 
@@ -184,23 +207,23 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name
 void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name) {
     plt::figure_size(500, 500);
 
-    vector<double> dist = eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::POSITION_X_IDX, Simulator::POSITION_Y_IDX), all).colwise().norm());
+    vector<double> dist = eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::POSITION_X_IDX, 2).colwise().norm());
 
     plt::plot(
       dist,
-      eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_N_X_IDX, Simulator::F_N_Y_IDX), all).colwise().norm()),
+      eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::F_N_X_IDX, 2).colwise().norm()),
       {{"label", R"(||\mathbf{F}_{n}||)"}}
     );
 
     plt::plot(
       dist,
-      eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_E_X_IDX, Simulator::F_E_Y_IDX), all).colwise().norm()),
+      eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::F_E_X_IDX, 2).colwise().norm()),
       {{"label", R"(||\mathbf{F}_{e}||)"}}
     );
 
     plt::plot(
       dist,
-      eig_vec2std_vec((VectorXd) simulator.get_beacon_traj_data(agent_id)(seq(Simulator::F_X_IDX, Simulator::F_Y_IDX), all).colwise().norm()),
+      eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::F_X_IDX, 2).colwise().norm()),
       {{"label", R"(||\mathbf{F}||)"}}
     );
 
@@ -327,11 +350,11 @@ void plot_sector(CircleSector sector, string clr) {
   plt::plot(
     sector_x,
     sector_y,
-    {{"color", clr}, {"linestyle", "--"}}
+    {{"color", "black"}, {"linestyle", "--"}}
   );
 }
 
-void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<CircleSector> invalid_sectors, Vector2d o_hat) {
+void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<CircleSector> invalid_sectors, eig::Vector2d o_hat) {
   vector<double> circle_points_x;
   vector<double> circle_points_y;
   for (const CircleSector sector : valid_sectors) {
@@ -365,7 +388,7 @@ void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<Circ
         valid_sectors.end(),
         CircleSector::cmp
   );
-  Vector2d tmp(
+  eig::Vector2d tmp(
     cos(largest_sector.get_angle_bisector()),
     sin(largest_sector.get_angle_bisector())
   );
@@ -387,7 +410,7 @@ void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<Circ
     0.2*sin(max_ang / 2.0) + 0.05
   );
 
-  plot_line_segment(Vector2d::Zero(), tmp, {{"color", "black"}});
+  plot_line_segment(eig::Vector2d::Zero(), tmp, {{"color", "black"}});
 
   plt::title(R"(Sectors for agent $\nu_{)" + to_string(beacon_id) + R"(}$)");
   plt::axis("equal");

@@ -1,8 +1,13 @@
 #include "range_ray.h"
 #include "helper.h"
+using namespace Eigen;
 
-#define is_between_zero_and_one(val) val >= 0 && val <= 1
-#define is_between_zero_and_max_bound(val, max_bound) val >= 0 && val <= max_bound
+bool is_between_zero_and_one(double val) {
+    return val >= 0 && val <= 1;
+}
+bool is_between_zero_and_max_bound(double val, double max_bound){
+    return val >= 0 && val <= max_bound;
+}
 
 Env RangeRay::env = Env();
 

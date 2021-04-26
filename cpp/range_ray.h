@@ -3,11 +3,10 @@
 
 #include "Eigen/Dense"
 #include "env.h"
-using namespace Eigen;
 
 class RangeRay {
 public:
-    static double sense(Vector2d ray_origin, double ray_orientation, double max_range);
+    static double sense(Eigen::Vector2d ray_origin, double ray_orientation, double max_range);
     static Env env;
 };
 

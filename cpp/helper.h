@@ -3,11 +3,10 @@
 
 #include <stdlib.h> /* srand, rand */
 #include <time.h>   /* time */
-#include "Eigen/Dense"
-using namespace Eigen;
-
 #include <math.h>   /* cos */
 #include <vector>
+
+#include "Eigen/Dense"
 
 class RandomNumberGenerator {
 public:
@@ -17,11 +16,11 @@ public:
 
 double get_Xi_from_model(double d, double d_perf, double d_none, double xi_bar);
 
-double cross(Matrix<double, 2, 1> a, Matrix<double, 2, 1> b);
+double cross(Eigen::Matrix<double, 2, 1> a, Eigen::Matrix<double, 2, 1> b);
 
-std::vector<double> eig_vec2std_vec(Vector<double, Dynamic> vec);
+std::vector<double> eig_vec2std_vec(Eigen::VectorXd vec);
 
-Vector<double, Dynamic> clamp_vec (Vector<double, Dynamic> vec, double threshold);
+Eigen::VectorXd clamp_vec (Eigen::VectorXd vec, double threshold);
 
 template<typename T>
 bool vectors_equal(std::vector<T> v1, std::vector<T> v2) {
