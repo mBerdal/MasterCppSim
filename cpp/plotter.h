@@ -9,6 +9,6 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, std::string run
 void plot_agent_force_vs_dist(Simulator simulator, int agent_id, std::string run_name = "");
 void plot_agent_neigh_traj(Simulator simulator, int agent_id, std::string run_name = "");
 void plot_Xi_model();
-void plot_sectors(int beacon_id, std::vector<CircleSector> valid_sectors, std::vector<CircleSector> invalid_sectors, Eigen::Vector2d o_hat);
+void plot_sectors(int beacon_id, std::vector<CircleSector> valid_sectors, std::vector<CircleSector> invalid_sectors, Eigen::Vector2d o_hat, std::string run_name = "");
 
 #endif

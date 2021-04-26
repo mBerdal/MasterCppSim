@@ -44,7 +44,7 @@ private:
     double start_ang;
     double end_ang;
 public:
-    CircleSector(double start_ang, double end_ang) : start_ang(start_ang), end_ang(end_ang) {}
+    CircleSector(double start_ang, double end_ang) : start_ang(start_ang), end_ang(end_ang == start_ang ? start_ang + 2 * M_PI : end_ang) {}
     inline double get_central_angle() const { return end_ang > start_ang ? end_ang - start_ang : end_ang - start_ang + 2 * M_PI; }
     inline double start() const {return start_ang; }
     inline double end() const {return end_ang; }

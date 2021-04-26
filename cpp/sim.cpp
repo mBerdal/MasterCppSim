@@ -93,22 +93,21 @@ void Simulator::simulate() {
         eig::MatrixXd valid_traj_data = beacon_traj_data[curr_deploying_agent_id].leftCols(step_count);
         beacon_traj_data[curr_deploying_agent_id] = valid_traj_data;
 
+        compute_exploration_vectors_for_beacons({curr_deploying_agent_id}, curr_deploying_agent_id - 1);
+
         vector<int> agent_neighbors_at_landing = get_beacon_neighbors(
             curr_deploying_agent_id,
             beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1),
             curr_deploying_agent_id - 1
         );
-
-        eig::Vector2d o_hat_at_landing = beacon_traj_data[curr_deploying_agent_id].block(
-            O_HAT_X_IDX,
-            beacon_traj_data[curr_deploying_agent_id].cols()-1,
-            2,
-            1
-        );
-
-        set_all_exp_vec_types_for_beacon(curr_deploying_agent_id, agent_neighbors_at_landing, o_hat_at_landing);
+        
         cout << "Agent " << curr_deploying_agent_id << " landed after " << step_count << " steps\n";
         cout << "With " << agent_neighbors_at_landing.size() << " neighbors.\n";
+
+        if (agent_neighbors_at_landing.size() > 6) {
+            cout << "RECOMPUTING DUE TO CLUSTER AT LANDING SPOT!\n";
+            compute_exploration_vectors_for_beacons(agent_neighbors_at_landing, curr_deploying_agent_id);
+        }
 
     }
 }
@@ -153,14 +152,10 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     eig::Vector<double, NUM_STATE_VARIABLES> state_der;
     state_der << F(0), F(1), 0, 0, 0;
     /**
-     * TODO: Fix dynamic step size
-     **/
-    double F_e_norm = F_e.norm();
-    if (F_e_norm > 50) {
+    * TODO: Fix dynamic step size
+    **/
+    if (F_e.norm() > 200) {
         *dt_ptr = base_dt / 100.0;
-    }
-    else if (F_e_norm > 2) {
-        *dt_ptr = base_dt / 10.0;
     }
     if (step_count > 2000) {
         *dt_ptr = base_dt / 1000.0;
@@ -197,22 +192,8 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
             /*
             For all neighbors, recalculate exploration angle
             */
-            cout << "Neighs at loop\n";
-            for (const int & neighbor_id : curr_deploying_agent_curr_neighs) {
-                cout << neighbor_id << "\n";
-                vector<int> neighs_of_neigh = get_beacon_neighbors(
-                    neighbor_id,
-                    beacon_traj_data[neighbor_id].topRightCorner(2, 1),
-                    curr_deploying_agent_id - 1
-                );
-                eig::Vector2d neigh_o_hat = beacon_traj_data[neighbor_id].block(
-                    O_HAT_X_IDX,
-                    beacon_traj_data[neighbor_id].cols()-1,
-                    2,
-                    1
-                );
-                set_all_exp_vec_types_for_beacon(neighbor_id, neighs_of_neigh, neigh_o_hat);
-            }
+            compute_exploration_vectors_for_beacons(curr_deploying_agent_curr_neighs, curr_deploying_agent_id - 1);
+            
             agent_id_neigh_traj_idx_of_loop_start_end_map[curr_deploying_agent_id].push_back(
                 pair<int, int>(
                     neighs_encountered_before_idx,
@@ -225,67 +206,6 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
         }
     }
     return NO_PROBLEM;
-}
-
-CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vector<int> agent_neighbors, eig::Vector2d obstacle_avoidance_vec) const {
-    if (agent_neighbors.size() == 0) {
-        cout << "No neighbors for agent " << curr_deploying_agent_id << ". Using 0 as bisection based angle\n";
-        return CircleSector(0, 0);
-    }
-    int num_neighs = agent_neighbors.size();
-    vector<double> angles;
-    double sector_min_bound, sector_max_bound;
-    bool avoid_obstacle = obstacle_avoidance_vec.norm() >= RANGE_SENSOR_MAX_RANGE_METERS / 2.0;
-
-
-    if (avoid_obstacle) {
-        double obstacle_avoidance_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
-        sector_max_bound = clamp_zero_two_pi(obstacle_avoidance_angle + M_PI_2);
-        sector_min_bound = clamp_zero_two_pi(obstacle_avoidance_angle - M_PI_2);
-        angles.push_back(sector_max_bound);
-        angles.push_back(sector_min_bound);
-    }
-
-    for (int i = 0; i < num_neighs; i++) {
-        eig::Vector2d vec_to_neigh = (
-            beacon_traj_data[agent_neighbors[i]].topRightCorner(2, 1) - 
-            beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1)
-        );
-        angles.push_back(
-            clamp_zero_two_pi(atan2(vec_to_neigh(1), vec_to_neigh(0)))
-        );
-    }
-    int num_sectors = num_neighs + (avoid_obstacle ? 2 : 0);
-    if(num_sectors == 1) {
-        return CircleSector(angles[0], angles[0] + 2 * M_PI);
-    }
-
-    sort(angles.begin(), angles.end());
-    vector<CircleSector> invalid_sectors;
-    vector<CircleSector> valid_sectors;
-    for (int i = 0; i < num_sectors; i++) {
-        bool is_valid_sector = true;
-        double sector_start = (i < num_sectors - 1) ? angles[i] : angles[num_sectors - 1];
-        double sector_end = (i < num_sectors - 1) ? angles[i + 1] : angles[0];
-
-        if (avoid_obstacle) {
-            is_valid_sector = (sector_max_bound > sector_min_bound) ? sector_start >= sector_min_bound && sector_start < sector_max_bound : sector_start >= sector_min_bound || sector_start < sector_max_bound;
-        }
-        if (is_valid_sector) {
-            valid_sectors.push_back(CircleSector(sector_start, sector_end));
-        }
-        else {
-            invalid_sectors.push_back(CircleSector(sector_start, sector_end));
-        }
-    }
-
-    CircleSector valid_sector_with_max_central_angle = *max_element(
-        valid_sectors.begin(),
-        valid_sectors.end(),
-        CircleSector::cmp
-    );
-    //plot_sectors(curr_deploying_agent_id, valid_sectors, invalid_sectors, obstacle_avoidance_vec);
-    return valid_sector_with_max_central_angle;
 }
 
 eig::Vector2d Simulator::get_neigh_force_on_agent(eig::Vector2d agent_pos, vector<int> agent_curr_neighs) const {
@@ -355,20 +275,78 @@ vector<int> Simulator::get_beacon_neighbors(int beacon_id, eig::Vector2d beacon_
     return neighs;
 }
 
+void Simulator::compute_exploration_vectors_for_beacons(vector<int> beacon_ids, int max_neighbor_id) {
+    for (const int & beacon_id : beacon_ids) {
+        if (beacon_id != 0) {
+            /*
+            * Never alter the exploration direction of the base
+            */
+            vector<int> beacon_neighs = get_beacon_neighbors(
+                beacon_id,
+                beacon_traj_data[beacon_id].topRightCorner(2, 1),
+                max_neighbor_id
+            );
+            eig::Vector2d o_hat = beacon_traj_data[beacon_id].block(
+                O_HAT_X_IDX,
+                beacon_traj_data[beacon_id].cols()-1,
+                2,
+                1
+            );
+            set_all_exp_vec_types_for_beacon(beacon_id, beacon_neighs, o_hat);
+        }
+    }
+}
+
+vector<CircleSector> Simulator::get_exploration_sectors(int curr_deploying_agent_id, vector<int> agent_neighbors, eig::Vector2d obstacle_avoidance_vec) const {
+    if (agent_neighbors.size() == 0) {
+        cout << "No neighbors for agent " << curr_deploying_agent_id << ". Using 45 deg as bisection based angle\n";
+        return {CircleSector(0, M_PI_2)};
+    }
+    int num_neighs = agent_neighbors.size();
+    vector<double> angles;
+
+    for (int i = 0; i < num_neighs; i++) {
+        eig::Vector2d vec_to_neigh = (
+            beacon_traj_data[agent_neighbors[i]].topRightCorner(2, 1) - 
+            beacon_traj_data[curr_deploying_agent_id].topRightCorner(2, 1)
+        );
+        angles.push_back(
+            clamp_zero_two_pi(atan2(vec_to_neigh(1), vec_to_neigh(0)))
+        );
+    }
+    sort(angles.begin(), angles.end());
+    vector<CircleSector> sectors;
+    for (int i = 0; i < num_neighs; i++) {
+        double sector_start = (i < num_neighs - 1) ? angles[i] : angles[num_neighs - 1];
+        double sector_end = (i < num_neighs - 1) ? angles[i + 1] : angles[0];
+
+        sectors.push_back(CircleSector(sector_start, sector_end));
+    }
+    return sectors;
+}
+
 void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbor_ids, eig::Vector2d obstacle_avoidance_vec){
-    CircleSector exploration_sector = get_exploration_sector(beacon_id, neighbor_ids, obstacle_avoidance_vec);
+    vector<CircleSector> exploration_sectors = get_exploration_sectors(beacon_id, neighbor_ids, obstacle_avoidance_vec);
+    CircleSector max_sector = *max_element(
+        exploration_sectors.begin(),
+        exploration_sectors.end(),
+        CircleSector::cmp
+    );
 
     double rand = RandomNumberGenerator::get_between(-1, 1);
-    double delta_angle_max = exploration_sector.get_central_angle() / 4.0;
-    double rand_angle_in_sector = exploration_sector.get_angle_bisector() + rand * delta_angle_max;
-    
+    double delta_angle_max = max_sector.get_central_angle() / 8.0;
+    double rand_angle_in_sector = clamp_zero_two_pi(max_sector.get_angle_bisector() + rand * delta_angle_max);
+
+    double theta_nom = max_sector.get_angle_bisector();
     exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED].push_back(
-        exploration_sector.get_angle_bisector()
+        beacon_id == 0 ? max_sector.get_angle_bisector() : theta_nom
     );
-    exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED_RANDOM].push_back(
-        clamp_pm_pi(M_PI_4 * RandomNumberGenerator::get_between(-1, 1) + exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED].back())
+    exploration_angles[beacon_id][ExpVecType::TOTAL].push_back(
+        get_wall_adjusted_angle(get_beacon_exploration_angles(beacon_id, NEIGH_INDUCED).back(), obstacle_avoidance_vec)
     );
-    exploration_angles[beacon_id][ExpVecType::TOTAL].push_back(get_beacon_exploration_angles(beacon_id, NEIGH_INDUCED).back());
+    if (beacon_id == 34) {
+        plot_sectors(34, exploration_sectors, {}, obstacle_avoidance_vec);
+    }
 }
 
 double Simulator::get_avg_angle_away_from_neighs(int beacon_id, vector<int> neighbor_ids) const {
@@ -421,11 +399,22 @@ bool Simulator::get_is_looping(int curr_deploying_agent_id) {
 }
 
 double Simulator::get_wall_adjusted_angle(double nominal_angle, eig::Vector2d obstacle_avoidance_vec) const {
-    double o_hat_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
+    double o_hat_angle = clamp_zero_two_pi(atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0)));
     double o_hat_norm = obstacle_avoidance_vec.norm();
 
-    double w_ang = o_hat_norm / RANGE_SENSOR_MAX_RANGE_METERS;
-    double c = (1 - w_ang)*cos(nominal_angle) + w_ang*cos(o_hat_angle);
-    double s = (1 - w_ang)*sin(nominal_angle) + w_ang*sin(o_hat_angle);
-    return atan2(s, c);
+    double target_angle;
+    if (clamp_pm_pi(o_hat_angle - nominal_angle) < -M_PI_2) {
+        target_angle = clamp_zero_two_pi(o_hat_angle + M_PI_2);
+    }
+    else if (clamp_pm_pi(o_hat_angle - nominal_angle) > M_PI_2) {
+        target_angle = clamp_zero_two_pi(o_hat_angle - M_PI_2);
+    }
+    else {
+        target_angle = nominal_angle;
+    }
+
+    double w = o_hat_norm / RANGE_SENSOR_MAX_RANGE_METERS;
+    double c = (1 - w)*cos(nominal_angle) + w*cos(target_angle);
+    double s = (1 - w)*sin(nominal_angle) + w*sin(target_angle);
+    return clamp_zero_two_pi(atan2(s, c));
 }

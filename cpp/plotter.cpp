@@ -99,14 +99,14 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     */
     int num_exp_vecs = simulator.get_applied_beacon_exploration_angles(beacon_id).size();
     for (int i = 0; i < num_exp_vecs; i++) {
-      plot_line_segment(
+      /*plot_line_segment(
         beacon_final_pos,
         beacon_final_pos + eig::Rotation2Dd(simulator.get_beacon_exploration_angles(beacon_id, ExpVecType::NEIGH_INDUCED)[i]).toRotationMatrix() * eig::Vector2d::UnitX(),
         {
           {"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_OTHER_GRADIENT)},
           {"label", add_legend ? R"($\mathbf{v}_{n}$)" : ""}
         }
-      );
+      );*/
       plot_line_segment(
         beacon_final_pos,
         beacon_final_pos + eig::Rotation2Dd(simulator.get_applied_beacon_exploration_angles(beacon_id)[i]).toRotationMatrix() * eig::Vector2d::UnitX(),
@@ -356,7 +356,8 @@ void plot_sector(CircleSector sector, string clr) {
   );
 }
 
-void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<CircleSector> invalid_sectors, eig::Vector2d o_hat) {
+void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<CircleSector> invalid_sectors, eig::Vector2d o_hat, string run_name) {
+  plt::figure_size(500, 500);
   vector<double> circle_points_x;
   vector<double> circle_points_y;
   for (const CircleSector sector : valid_sectors) {
@@ -380,7 +381,7 @@ void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<Circ
     {{"color", "black"}, {"zorder", "100"}}
   );
 
-  if (invalid_sectors.size() > 0) {
+  if (o_hat.norm() > 10e-7) {
     plt::arrow(0.0, 0.0, (double) o_hat(0), (double) o_hat(1), LITE_GRAY, LITE_GRAY, 0.1, 0.1);
     plt::annotate(R"($\hat{\mathbf{o}}$)", o_hat(0) + 0.1, o_hat(1) + 0.1);
   }
@@ -415,6 +416,11 @@ void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<Circ
   plot_line_segment(eig::Vector2d::Zero(), tmp, {{"color", "black"}});
 
   plt::title(R"(Sectors for agent $\nu_{)" + to_string(beacon_id) + R"(}$)");
-  plt::axis("equal");
+  if (run_name != "") {
+      plt::axis("equal");
+      plt::save(
+        FIGURES_DIR + run_name + "_sectors_" + to_string(beacon_id) + ".pdf"
+      );
+    }
   plt::show();
 }

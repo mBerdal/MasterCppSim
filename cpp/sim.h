@@ -133,7 +133,9 @@ private:
     /*
     NEW STUFF
     */
-    CircleSector get_exploration_sector(int curr_deploying_agent_id, std::vector<int> agent_neighbors, Eigen::Vector2d obstacle_avoidance_vec) const;
+    std::vector<CircleSector> get_exploration_sectors(int curr_deploying_agent_id, std::vector<int> agent_neighbors, Eigen::Vector2d obstacle_avoidance_vec) const;
+    void compute_exploration_vectors_for_beacons(std::vector<int> beacon_ids, int max_neighbor_id);
+
 };
 
 #endif

@@ -19,13 +19,13 @@ int main() {
     // Creating rectangular environment
     eig::Matrix<double, 2, 4> m;
     m << -1, 10, 10, -1,
-        -1, -1, 10, 10;
+        -1, -1, 20, 20;
     list<eig::Matrix<double, 2, eig::Dynamic>> obstacles;
     obstacles.push_back(m);
     Env environment = Env(obstacles);
 
     // Initializing simulator and running
-    int n_agents = 89;
+    int n_agents = 80;
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 100000;
 
