@@ -14,10 +14,17 @@ enum ExpVecType {
     TOTAL,
 };
 
+struct XiParams {
+        double d_perf;
+        double d_none;
+        double xi_bar;
+        double neigh_treshold;
+};
+
 class Simulator {
 public:
-    Simulator(double base_dt, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
-            Eigen::Vector2d (*get_force_func)(Eigen::Vector2d, int, Eigen::Vector2d, double, double),
+    Simulator(double base_dt, double gain_factor, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
+            XiParams xi_params, Eigen::Vector2d (*get_force_func)(double, Eigen::Vector2d, Eigen::Vector2d, double, double),
             double force_saturation_limit = 4.0, double minimum_force_threshold = 0.01, int agent_max_steps = 100000,
             ExpVecType use_exp_vec_type = ExpVecType::NEIGH_INDUCED);
     
@@ -53,13 +60,14 @@ public:
 
     static const int TIMESTAMP_IDX = 13;
 
-
     Eigen::MatrixXd get_beacon_traj_data(int agent_id) const { return beacon_traj_data[agent_id]; }
     Eigen::MatrixXd* get_all_traj_data() const { return beacon_traj_data; }
 
     inline std::vector<std::pair<double, std::vector<int>>> get_agent_neigh_traj(int agent_id) const { return neighbor_set_traj[agent_id - 1]; }
 
     std::map<int, std::vector<std::pair<int, int>>> agent_id_neigh_traj_idx_of_loop_start_end_map;
+
+    double get_beacon_nominal_weight(int beacon_id) const;
     
 private:
 
@@ -67,7 +75,6 @@ private:
     static constexpr double RANGE_SENSOR_FOV_RAD = 27.0 * M_PI / 180.0;
     static constexpr double RANGE_SENSOR_MAX_RANGE_METERS = 2;
 
-    int num_rays_per_range_sensor;
     Eigen::ArrayXd ray_angles_rel_SENSOR;
 
     enum StepResult {
@@ -76,27 +83,28 @@ private:
         NO_PROBLEM
     };
 
-    struct XiParams {
-        double d_perf;
-        double d_none;
-        double xi_bar;
-        double neigh_treshold;
-    };
     XiParams xi_params;
+
+    Env environment;
+
+    int num_rays_per_range_sensor;
+    
+    int num_agents_to_deploy;
+    int agent_max_steps;
 
     double force_saturation_limit;
     double minimum_force_threshold;;
 
-
-    Env environment;
-    int num_agents_to_deploy;
-    int agent_max_steps;
     double time;
     double base_dt;
+
     double k_obs;
+
+    double gain_factor;
+
     ExpVecType use_exp_vec_type;
 
-    Eigen::Vector2d (*get_force_func)(Eigen::Vector2d, int, Eigen::Vector2d, double, double);
+    Eigen::Vector2d (*get_force_func)(double, Eigen::Vector2d, Eigen::Vector2d, double, double);
 
     /*
     Trajectory data for each agent. The matrix for beacon with ID i is located
@@ -104,10 +112,18 @@ private:
     */
     Eigen::MatrixXd *beacon_traj_data;
 
+
+    /*
+    Array of maps containing all exploration angles ever set for each beacon.
+    Exploration angles for beacon i located at exploration_angles[i].
+    Last element of vector exploration_angles[i][exp_vec_type] containes the 
+    most recently computed exploration angle of that exp_vec_type.
+    */
     std::map<ExpVecType, std::vector<double>>* exploration_angles;
 
     /*
-    Each vector contains tuples of (time, set of neighbor ids)
+    Vector of pairs where pairs contain (time, set of neighbor ids).
+    Neighbor set traj for agent i located at neighbor_set_traj[i-1].
     */
     std::vector<std::pair<double, std::vector<int>>>* neighbor_set_traj;
 

@@ -11,12 +11,13 @@
 namespace eig = Eigen;
 using namespace std;
 
-Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
-                    eig::Vector2d (*get_force_func)(eig::Vector2d, int, eig::Vector2d, double, double),
+Simulator::Simulator(double base_dt, double gain_factor, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
+                    XiParams xi_params, eig::Vector2d (*get_force_func)(double, eig::Vector2d, eig::Vector2d, double, double),
                     double force_saturation_limit, double minimum_force_threshold, int agent_max_steps,
                     ExpVecType use_exp_vec_type) {
 
     this->base_dt = base_dt;
+    this->gain_factor = gain_factor;
     this->k_obs = k_obs;
     RangeRay::env = environment;
     this->environment = environment;
@@ -43,11 +44,7 @@ Simulator::Simulator(double base_dt, double k_obs, Env environment, int num_agen
         ray_angles_rel_SENSOR = eig::ArrayXd::LinSpaced(num_rays_per_range_sensor, -RANGE_SENSOR_FOV_RAD / 2.0, RANGE_SENSOR_FOV_RAD / 2.0);
     }
 
-    xi_params.d_perf = 1;
-    xi_params.d_none = 3;
-    xi_params.xi_bar = 3;
-    xi_params.neigh_treshold = 0.5;
-
+    this->xi_params = xi_params;
     RandomNumberGenerator::seed();
 
     agent_id_neigh_traj_idx_of_loop_start_end_map = map<int, vector<pair<int, int>>>();
@@ -97,7 +94,6 @@ void Simulator::simulate() {
 
         cout << "Agent " << curr_deploying_agent_id << " landed after " << step_count << " steps\n";
         cout << "With " << neighbor_set_traj[curr_deploying_agent_id - 1].back().second.size() << " neighbors.\n";
-
     }
 }
 
@@ -153,7 +149,7 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
         *dt_ptr = base_dt / 10.0;
     }
     if (step_count > 2000) {
-        *dt_ptr = base_dt / 1000.0;
+        *dt_ptr = base_dt / 10.0;
     }
     else if (step_count > 10000) {
         *dt_ptr = base_dt / 10000.0;
@@ -223,8 +219,17 @@ void Simulator::compute_beacon_exploration_dir(int beacon_id, int max_neigh_id){
     set_all_exp_vec_types_for_beacon(beacon_id, beacon_neighs, neigh_o_hat);
 }
 
+double Simulator::get_beacon_nominal_weight(int beacon_id) const {
+    return pow(gain_factor, beacon_id);
+}
+
 eig::Vector2d Simulator::get_neigh_force_on_agent(eig::Vector2d agent_pos, vector<int> agent_curr_neighs) const {
     eig::Vector2d F = eig::Vector2d::Zero();
+
+    double sum_of_weights = 0;
+    for (int beacon_id : agent_curr_neighs) {
+        sum_of_weights += get_beacon_nominal_weight(beacon_id);
+    }
 
     for (int beacon_id : agent_curr_neighs) {
         eig::Vector2d other_beacon_pos = beacon_traj_data[beacon_id].topRightCorner(2, 1);
@@ -232,7 +237,9 @@ eig::Vector2d Simulator::get_neigh_force_on_agent(eig::Vector2d agent_pos, vecto
         double dist = (agent_pos - other_beacon_pos).norm();
         double xi = get_Xi_from_model(dist, xi_params.d_perf, xi_params.d_none, xi_params.xi_bar);
 
-        F += (*get_force_func)(agent_pos, beacon_id, other_beacon_pos, exploration_angles[beacon_id][use_exp_vec_type].back(), xi);
+        double k_i = (get_beacon_nominal_weight(beacon_id)) / sum_of_weights;
+
+        F += (*get_force_func)(k_i, agent_pos, other_beacon_pos, exploration_angles[beacon_id][use_exp_vec_type].back(), xi);
     }
     return F;
 }
@@ -347,22 +354,17 @@ CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vect
         valid_sectors.end(),
         CircleSector::cmp
     );
-    //plot_sectors(curr_deploying_agent_id, valid_sectors, invalid_sectors, obstacle_avoidance_vec);
     return valid_sector_with_max_central_angle;
 }
 
 void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbor_ids, eig::Vector2d obstacle_avoidance_vec){
     CircleSector exploration_sector = get_exploration_sector(beacon_id, neighbor_ids, obstacle_avoidance_vec);
 
-    double rand = RandomNumberGenerator::get_between(-1, 1);
-    double delta_angle_max = exploration_sector.get_central_angle() / 4.0;
-    double rand_angle_in_sector = exploration_sector.get_angle_bisector() + rand * delta_angle_max;
-    
     exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED].push_back(
         exploration_sector.get_angle_bisector()
     );
     exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED_RANDOM].push_back(
-        clamp_pm_pi(M_PI_4 * RandomNumberGenerator::get_between(-1, 1) + exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED].back())
+        exploration_sector.get_angle_bisector() + RandomNumberGenerator::get_between(-1, 1) * (exploration_sector.get_central_angle() / 4.0)
     );
     exploration_angles[beacon_id][ExpVecType::TOTAL].push_back(get_beacon_exploration_angles(beacon_id, NEIGH_INDUCED).back());
 }
