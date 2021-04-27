@@ -306,6 +306,26 @@ void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
     plt::show();
 }
 
+void plot_uniformity_traj(Simulator simulator, string run_name) {
+  plt::figure_size((16 / 9.0) * 500, 500);
+  vector<double> num_agents;
+  vector<double> uniformity;
+  for (int num_deployed_agents= 0; num_deployed_agents < simulator.get_num_deployed_beacons(); num_deployed_agents++) {
+    num_agents.push_back(num_deployed_agents);
+    uniformity.push_back(simulator.get_uniformity_after_deploying_num_agents(num_deployed_agents));
+  }
+
+  plt::plot(
+    num_agents,
+    uniformity,
+    {{"color", BLUE}, {"marker", "o"}}
+  );
+  plt::xlabel("Number of deployed agents");
+  plt::ylabel("Uniformity");
+  plt::title("Uniformity evolution");
+  plt::show();
+}
+
 void plot_Xi_model() {
   double d_perf = 1;
   double d_none = 3;

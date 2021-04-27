@@ -1,11 +1,12 @@
 #include "env.h"
 #include "sim.h"
 #include "plotter.h"
+
 #include <iostream>
 #include <list>
-#include "Eigen/Dense"
-
 using namespace std;
+
+#include "Eigen/Dense"
 namespace eig = Eigen;
 
 eig::Vector2d get_force_from_beacon(double k_i, eig::Vector2d agent_pos, eig::Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) {
@@ -23,7 +24,7 @@ int main() {
     Env environment = Env(obstacles);
 
     // Initializing simulator with parameters
-    int n_agents = 89;
+    int n_agents = 40;
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 100000;
 
@@ -59,11 +60,11 @@ int main() {
 
     // Plotting result of simulation
     string general_name = "sector_random__xploration";
+    plot_uniformity_traj(simulator);
     plot_config(simulator, general_name);
     for (const pair<int, vector<pair<int, int>>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
         plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, general_name + "looping");
         plot_single_beacon_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, true, true, general_name + "looping");
     }
-
     return 0;
 }

@@ -64,6 +64,8 @@ public:
     Eigen::MatrixXd* get_all_traj_data() const { return beacon_traj_data; }
 
     inline std::vector<std::pair<double, std::vector<int>>> get_agent_neigh_traj(int agent_id) const { return neighbor_set_traj[agent_id - 1]; }
+    inline double* get_uniformity_traj() const { return uniformity_traj; }
+    inline double get_uniformity_after_deploying_num_agents(int num_agents) const { return uniformity_traj[num_agents]; }
 
     std::map<int, std::vector<std::pair<int, int>>> agent_id_neigh_traj_idx_of_loop_start_end_map;
 
@@ -126,6 +128,12 @@ private:
     Neighbor set traj for agent i located at neighbor_set_traj[i-1].
     */
     std::vector<std::pair<double, std::vector<int>>>* neighbor_set_traj;
+
+    /*
+    Array of size num_agents_to_deploy + 1. The value stored at uniformity_traj[i] is the uniformity after
+    spawning i agents. 
+    */
+    double* uniformity_traj;
 
     Eigen::Vector2d get_neigh_force_on_agent(Eigen::Vector2d agent_pos, std::vector<int> agent_curr_neighs) const;
     Eigen::Vector2d get_env_force_agent(Eigen::Vector2d obstacle_avoidance_vec) const;
