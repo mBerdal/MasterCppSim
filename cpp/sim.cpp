@@ -432,6 +432,9 @@ bool Simulator::get_is_looping(int curr_deploying_agent_id) {
         If it has, set neighs_encountered_before_idx to that index
         */
         neighs_encountered_before_idx = get_curr_neigh_set_index_of_encounter(curr_deploying_agent_id);
+        if (neighs_encountered_before_idx != -1) {
+            cout << "encountered before (" << neighs_encountered_before_idx << ", " << neighbor_set_traj[curr_deploying_agent_id - 1].size() << ")\n";
+        }
     }
     else {
         /*
@@ -441,10 +444,12 @@ bool Simulator::get_is_looping(int curr_deploying_agent_id) {
         */
         int index_of_encounter = get_curr_neigh_set_index_of_encounter(curr_deploying_agent_id);
         if (index_of_encounter == neighs_encountered_before_idx + 1) {
+            cout << "loop (" << index_of_encounter << ", " << neighbor_set_traj[curr_deploying_agent_id - 1].size() << ")\n";
             return true;
         }
         else {
             neighs_encountered_before_idx = index_of_encounter;
+            cout << "encountered before (" << neighs_encountered_before_idx << ", " << neighbor_set_traj[curr_deploying_agent_id - 1].size() << ")\n";
         }
     }
     return false;

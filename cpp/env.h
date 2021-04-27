@@ -23,6 +23,6 @@ public:
     Env() : walls(std::vector<Wall>()) {}
     Env(std::list<Eigen::Matrix<double, 2, Eigen::Dynamic>> obstacles);
     inline std::vector<Wall> get_walls() const { return walls; }
-};  
+};
 
 #endif

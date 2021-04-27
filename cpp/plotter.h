@@ -3,6 +3,7 @@
 
 #include "sim.h"
 
+void plot_environment(Simulator simulator, bool show = false);
 void plot_config(Simulator simulator, std::string run_name = "");
 void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show=false, bool add_legend=false, std::string run_name="");
 void plot_agent_force_vs_time(Simulator simulator, int agent_id, std::string run_name = "");

@@ -50,20 +50,26 @@ void plot_line_segment(eig::Vector2d start, eig::Vector2d end, const map<string,
   plt::plot(x_range, y_range, keywords);
 }
 
-void plot_environment(Simulator simulator) {
-    for (Wall const &w : simulator.get_environment().get_walls()) {
-        plot_line_segment(
-          w.get_start(),
-          w.get_end(),
-          {{"color", DARK_GRAY}}
-        );
-    }
+void plot_environment(Simulator simulator, bool show) {
+  if (show) {
+    plt::figure_size(500, 500);
+  }
+  for (Wall const &w : simulator.get_environment().get_walls()) {
+      plot_line_segment(
+        w.get_start(),
+        w.get_end(),
+        {{"color", DARK_GRAY}}
+      );
+  }
+  if (show) {
+    plt::show();
+  }
 }
 
 void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool add_legend, string run_name) {
     if (show) {
       plt::figure_size(500, 500);
-      plot_environment(simulator);
+      plot_environment(simulator, false);
     }
     
     eig::MatrixXd beacon_traj_data = simulator.get_beacon_traj_data(beacon_id);
@@ -136,9 +142,9 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
 }
 
 void plot_config(Simulator simulator, string run_name) {
-    plt::figure_size(500, 500);
+    plt::figure_size(750, 750);
 
-    plot_environment(simulator);
+    plot_environment(simulator, false);
     
 
     for (int beacon_id = 0; beacon_id < simulator.get_num_deployed_beacons(); beacon_id++) {
@@ -307,7 +313,7 @@ void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
 }
 
 void plot_uniformity_traj(Simulator simulator, string run_name) {
-  plt::figure_size((16 / 9.0) * 500, 500);
+  plt::figure_size((16 / 9.0) * 400, 400);
   vector<double> num_agents;
   vector<double> uniformity;
   for (int num_deployed_agents= 0; num_deployed_agents < simulator.get_num_deployed_beacons(); num_deployed_agents++) {
@@ -323,6 +329,12 @@ void plot_uniformity_traj(Simulator simulator, string run_name) {
   plt::xlabel("Number of deployed agents");
   plt::ylabel("Uniformity");
   plt::title("Uniformity evolution");
+  if (run_name != "") {
+      plt::axis("tight");
+      plt::save(
+        FIGURES_DIR + run_name + "_uniformity_traj_" + to_string(simulator.get_num_deployed_agents()) + "_agent.pdf"
+      );
+  }
   plt::show();
 }
 

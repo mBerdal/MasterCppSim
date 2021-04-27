@@ -17,14 +17,14 @@ int main() {
 
     // Creating rectangular environment
     eig::Matrix<double, 2, 4> m;
-    m << -1, 10, 10, -1,
-        -1, -1, 10, 10;
+    m << -1, 49, 49, -1,
+        -1, -1, 19, 19;
     list<eig::Matrix<double, 2, eig::Dynamic>> obstacles;
     obstacles.push_back(m);
     Env environment = Env(obstacles);
 
     // Initializing simulator with parameters
-    int n_agents = 40;
+    int n_agents = 10;
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 100000;
 
@@ -35,9 +35,9 @@ int main() {
     double minimum_force_threshold = 0.01;
 
     XiParams xi_params;
-    xi_params.d_perf = 1;
+    xi_params.d_perf = 3;
     xi_params.d_none = 3;
-    xi_params.xi_bar = 3;
+    xi_params.xi_bar = 6;
     xi_params.neigh_treshold = 0.5;
     
     Simulator simulator(
@@ -59,12 +59,12 @@ int main() {
     simulator.simulate();
 
     // Plotting result of simulation
-    string general_name = "sector_random__xploration";
-    plot_uniformity_traj(simulator);
+    string general_name = "sector_random_hallway__xploration";
+    plot_uniformity_traj(simulator, general_name);
     plot_config(simulator, general_name);
     for (const pair<int, vector<pair<int, int>>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
-        plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, general_name + "looping");
         plot_single_beacon_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, true, true, general_name + "looping");
+        plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, general_name + "looping");
     }
     return 0;
 }
