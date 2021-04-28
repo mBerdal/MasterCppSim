@@ -4,7 +4,7 @@
 #include "env.h"
 #include "helper.h"
 
-#include "Eigen/Dense"
+#include <Eigen/Dense>
 #include <set>
 #include <map>
 
@@ -168,6 +168,8 @@ private:
     void compute_beacon_exploration_dir(int beacon_id, int max_neigh_id);
 
     inline bool did_neigh_set_change(int agent_id, std::vector<int> new_neigh_set) { return !vectors_equal(neighbor_set_traj[agent_id - 1].back().second, new_neigh_set); }
+
+    void compute_uniformity(int max_agent_id);
 };
 
 #endif

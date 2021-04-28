@@ -9,3 +9,10 @@ Env::Env(std::list<eig::Matrix<double, 2, eig::Dynamic>> obstacles) {
         }
     }
 }
+
+Env Env::ten_by_ten = Env({
+    Wall(-eig::Vector2d::Ones(), -eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 9),
+    Wall(-eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 9, eig::Vector2d::UnitY() * 9 + eig::Vector2d::UnitX() * 9),
+    Wall(eig::Vector2d::UnitY() * 9 + eig::Vector2d::UnitX() * 9, -eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9),
+    Wall(-eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9, -eig::Vector2d::Ones())
+});

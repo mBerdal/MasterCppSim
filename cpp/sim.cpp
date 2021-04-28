@@ -102,34 +102,34 @@ void Simulator::simulate() {
 
         cout << "in " << step_count << " steps, with " << neighbor_set_traj[curr_deploying_agent_id - 1].back().second.size() << " neighbors.\n";
 
-        
-        /*
-        * Computing uniformity after the agent has landed
-        */
-        double total_uniformity = 0;
-        for (int beacon_id = 0; beacon_id <= curr_deploying_agent_id; beacon_id++) {
-            eig::Vector2d beacon_pos = beacon_traj_data[beacon_id].topRightCorner(2, 1);
-            vector<int> beacon_neighs = get_beacon_neighbors(beacon_id, beacon_pos , curr_deploying_agent_id);
-            int num_beacon_neighs = beacon_neighs.size();
-
-            double beacon_neigh_avg_dist = 0;
-            for (const int & neigh_id : beacon_neighs) {
-                eig::Vector2d neigh_pos = beacon_traj_data[neigh_id].topRightCorner(2, 1);
-                beacon_neigh_avg_dist += (beacon_pos - neigh_pos).norm();
-            }
-            beacon_neigh_avg_dist /= (double) num_beacon_neighs;
-
-            double sum_of_squared_deviance = 0;
-            for (const int & neigh_id : beacon_neighs) {
-                eig::Vector2d neigh_pos = beacon_traj_data[neigh_id].topRightCorner(2, 1);
-                sum_of_squared_deviance += pow((beacon_pos - neigh_pos).norm() - beacon_neigh_avg_dist, 2);
-            }
-
-            double beacon_uniformity = sqrt((1 / (double) num_beacon_neighs) * sum_of_squared_deviance);
-            total_uniformity += beacon_uniformity;
-        }
-        uniformity_traj[curr_deploying_agent_id] = total_uniformity / (double) (curr_deploying_agent_id + 1);
+        compute_uniformity(curr_deploying_agent_id);
     }
+}
+
+void Simulator::compute_uniformity(int max_agent_id) {
+    double tmp = 0;
+    for (int beacon_id = 0; beacon_id <= max_agent_id; beacon_id++) {
+        eig::Vector2d beacon_pos = beacon_traj_data[beacon_id].topRightCorner(2, 1);
+        vector<int> beacon_neighs = get_beacon_neighbors(beacon_id, beacon_pos , max_agent_id);
+        int num_beacon_neighs = beacon_neighs.size();
+
+        double beacon_neigh_avg_dist = 0;
+        for (const int & neigh_id : beacon_neighs) {
+            eig::Vector2d neigh_pos = beacon_traj_data[neigh_id].topRightCorner(2, 1);
+            beacon_neigh_avg_dist += (beacon_pos - neigh_pos).norm();
+        }
+        beacon_neigh_avg_dist /= (double) num_beacon_neighs;
+
+        double sum_of_squared_deviance = 0;
+        for (const int & neigh_id : beacon_neighs) {
+            eig::Vector2d neigh_pos = beacon_traj_data[neigh_id].topRightCorner(2, 1);
+            sum_of_squared_deviance += pow((beacon_pos - neigh_pos).norm() - beacon_neigh_avg_dist, 2);
+        }
+
+        double beacon_uniformity = sqrt((1 / (double) num_beacon_neighs) * sum_of_squared_deviance);
+        tmp += beacon_uniformity;
+    }
+    uniformity_traj[max_agent_id] = tmp / (double) (max_agent_id + 1);
 }
 
 

@@ -3,12 +3,14 @@
 #include "env.h"
 
 #include "matplotlib-cpp/matplotlibcpp.h"
+namespace plt = matplotlibcpp;
 
 #include <iomanip>
 #include <string>
 #include <iostream>
+using namespace std;
 
-#define FIGURES_DIR "../../figures/"
+#define FIGURES_DIR string("../../figures/")
 
 struct interpolation_color_t {
   int base_r, base_g, base_b, end_r, end_g, end_b;
@@ -28,8 +30,6 @@ struct interpolation_color_t {
 #define SCATTER_DOT_SIZE 40.0
 
 namespace eig = Eigen;
-namespace plt = matplotlibcpp;
-using namespace std;
 
 string get_interpolated_color(double interpolator, interpolation_color_t gradient) {
   int r = floor(gradient.end_r*interpolator + gradient.base_r*(1-interpolator));

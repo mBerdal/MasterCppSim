@@ -1,7 +1,7 @@
 #ifndef RANGE_RAY_H
 #define RANGE_RAY_H
 
-#include "Eigen/Dense"
+#include <Eigen/Dense>
 #include "env.h"
 
 class RangeRay {

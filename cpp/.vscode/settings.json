@@ -53,9 +53,19 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "iomanip": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "core": "cpp",
+        "condition_variable": "cpp",
+        "csignal": "cpp",
+        "forward_list": "cpp",
+        "unordered_set": "cpp",
+        "random": "cpp",
+        "mutex": "cpp",
+        "valarray": "cpp",
+        "variant": "cpp"
     },
     "cSpell.words": [
-        "eigen"
+        "eigen",
+        "nlohmann"
     ]
 }
