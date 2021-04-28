@@ -67,7 +67,7 @@ public:
     inline double* get_uniformity_traj() const { return uniformity_traj; }
     inline double get_uniformity_after_deploying_num_agents(int num_agents) const { return uniformity_traj[num_agents]; }
 
-    std::map<int, std::vector<std::pair<int, int>>> agent_id_neigh_traj_idx_of_loop_start_end_map;
+    std::map<int, std::vector<Eigen::Vector2i>> agent_id_to_loop_initiators_map;
 
     double get_beacon_nominal_weight(int beacon_id) const;
     
@@ -149,16 +149,25 @@ private:
     double get_avg_angle_away_from_neighs(int beacon_id, std::vector<int> neighbor_ids) const;
     double get_wall_adjusted_angle(double nominal_angle, Eigen::Vector2d obstacle_avoidance_vec) const;
     
-    bool get_is_looping(int curr_deploying_agent_id);
-    int get_curr_neigh_set_index_of_encounter(int curr_deploying_agent_id) const;
-    int neighs_encountered_before_idx;
-    int neigh_look_back_horizon;
+
+    enum LoopCheckResult {
+        NO_LOOP,
+        LOOP,
+        JITTER
+    };
+    LoopCheckResult get_loop_check_result(int curr_deploying_agent_id);
+    int get_curr_neigh_set_index_of_previous_encounter(int curr_deploying_agent_id) const;
+
+    int neigh_set_repeat_look_back_horizon;
+    Eigen::Vector2i most_recent_neigh_set_repeat_indices;
 
     /*
     NEW STUFF
     */
     CircleSector get_exploration_sector(int curr_deploying_agent_id, std::vector<int> agent_neighbors, Eigen::Vector2d obstacle_avoidance_vec) const;
     void compute_beacon_exploration_dir(int beacon_id, int max_neigh_id);
+
+    inline bool did_neigh_set_change(int agent_id, std::vector<int> new_neigh_set) { return !vectors_equal(neighbor_set_traj[agent_id - 1].back().second, new_neigh_set); }
 };
 
 #endif

@@ -267,33 +267,33 @@ void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
         );
       }
     }
-    if (simulator.agent_id_neigh_traj_idx_of_loop_start_end_map.count(agent_id) != 0) {
+    if (simulator.agent_id_to_loop_initiators_map.count(agent_id) != 0) {
       /*
       Agent detected loop(s)
       */
-      vector<pair<int, int>> loop_start_end = simulator.agent_id_neigh_traj_idx_of_loop_start_end_map[agent_id];
-      for (const pair<int, int> & start_end : loop_start_end) {
+      vector<eig::Vector2i> neigh_set_loops = simulator.agent_id_to_loop_initiators_map[agent_id];
+      for (const eig::Vector2i & loop_completor_indices : neigh_set_loops) {
         plt::scatter(
-          vector<double>(agent_neigh_traj[start_end.first].second.size(), agent_neigh_traj[start_end.first].first),
-          agent_neigh_traj[start_end.first].second,
+          vector<double>(agent_neigh_traj[loop_completor_indices(0) - 1].second.size(), agent_neigh_traj[loop_completor_indices(0) - 1].first),
+          agent_neigh_traj[loop_completor_indices(0) - 1].second,
           SCATTER_DOT_SIZE,
           {{"color", "red"}}
         );
         plt::scatter(
-          vector<double>(agent_neigh_traj[start_end.first + 1].second.size(), agent_neigh_traj[start_end.first + 1].first),
-          agent_neigh_traj[start_end.first + 1].second,
+          vector<double>(agent_neigh_traj[loop_completor_indices(0)].second.size(), agent_neigh_traj[loop_completor_indices(0)].first),
+          agent_neigh_traj[loop_completor_indices(0)].second,
           SCATTER_DOT_SIZE,
           {{"color", "green"}}
         );
         plt::scatter(
-          vector<double>(agent_neigh_traj[start_end.second].second.size(), agent_neigh_traj[start_end.second].first),
-          agent_neigh_traj[start_end.second].second,
+          vector<double>(agent_neigh_traj[loop_completor_indices(1) - 1].second.size(), agent_neigh_traj[loop_completor_indices(1) - 1].first),
+          agent_neigh_traj[loop_completor_indices(1) - 1].second,
           SCATTER_DOT_SIZE,
           {{"color", "red"}}
         );
         plt::scatter(
-          vector<double>(agent_neigh_traj[start_end.second + 1].second.size(), agent_neigh_traj[start_end.second + 1].first),
-          agent_neigh_traj[start_end.second + 1].second,
+          vector<double>(agent_neigh_traj[loop_completor_indices(1)].second.size(), agent_neigh_traj[loop_completor_indices(1)].first),
+          agent_neigh_traj[loop_completor_indices(1)].second,
           SCATTER_DOT_SIZE,
           {{"color", "green"}}
         );

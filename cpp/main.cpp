@@ -24,7 +24,7 @@ int main() {
     Env environment = Env(obstacles);
 
     // Initializing simulator with parameters
-    int n_agents = 10;
+    int n_agents = 80;
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 100000;
 
@@ -36,8 +36,8 @@ int main() {
 
     XiParams xi_params;
     xi_params.d_perf = 3;
-    xi_params.d_none = 3;
-    xi_params.xi_bar = 6;
+    xi_params.d_none = 6;
+    xi_params.xi_bar = 20;
     xi_params.neigh_treshold = 0.5;
     
     Simulator simulator(
@@ -62,9 +62,9 @@ int main() {
     string general_name = "sector_random_hallway__xploration";
     plot_uniformity_traj(simulator, general_name);
     plot_config(simulator, general_name);
-    for (const pair<int, vector<pair<int, int>>> & agent_id_neigh_traj_idx_of_loop_start_pair : simulator.agent_id_neigh_traj_idx_of_loop_start_end_map) {
-        plot_single_beacon_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, true, true, general_name + "looping");
-        plot_agent_neigh_traj(simulator, agent_id_neigh_traj_idx_of_loop_start_pair.first, general_name + "looping");
+    for (const pair<int, vector<eig::Vector2i>> & agent_id_loop_initiators_pair : simulator.agent_id_to_loop_initiators_map) {
+        plot_single_beacon_traj(simulator, agent_id_loop_initiators_pair.first, true, true, general_name + "looping");
+        plot_agent_neigh_traj(simulator, agent_id_loop_initiators_pair.first, general_name + "looping");
     }
     return 0;
 }
