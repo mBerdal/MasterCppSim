@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    with open("uniformity_test_v2.json") as f:
+    with open("uniformity_test_xi_bar_1,000000_runs_per_swarm_size_20.json") as f:
         """
         data formated as dict where keys correspond to the number
         of beacons deployed, and values are arrays of lenght num_runs_per_iteration containing
@@ -28,10 +28,12 @@ if __name__ == "__main__":
 
     assym_errors = [lb, ub]
     fig, ax = plt.subplots()
-    ax.errorbar(num_deployed_beacons_array, mean_uniformities, yerr=assym_errors, fmt='o', capsize=3)
+    fig.set_size_inches(9, 6)
+    ax.errorbar(num_deployed_beacons_array, mean_uniformities, yerr=assym_errors, fmt='o', capsize=3, ecolor="black")
     ax.set_ylim([0, 1.6])
 
     ax.grid(linestyle='dotted')
-    ax.set_xlabel("Total number of beacons")
+    ax.set_xlabel("Number of deployed beacons")
     ax.set_ylabel("Uniformity")
+    fig.savefig("uniformity_ten_by_ten_xi_bar_1_20_runs_per_swarm_size.pdf")
     plt.show()

@@ -133,7 +133,7 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     if (run_name != "") {
       plt::axis("tight");
       plt::save(
-        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_agent_" + to_string(beacon_id) + "_traj.pdf"
+        FIGURES_DIR + run_name + "_" + to_string(simulator.get_num_deployed_beacons()) + "_deployed_beacons_" + to_string(beacon_id) + "_traj.pdf"
       );
     }
     if (show) {
@@ -141,7 +141,7 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     }
 }
 
-void plot_config(Simulator simulator, string run_name) {
+void plot_config(Simulator simulator, bool show, string run_name) {
     plt::figure_size(750, 750);
 
     plot_environment(simulator, false);
@@ -159,10 +159,13 @@ void plot_config(Simulator simulator, string run_name) {
     if (run_name != "") {
       plt::axis("tight");
       plt::save(
-        FIGURES_DIR + to_string(simulator.get_num_deployed_agents()) + "_agent_" + run_name + "_config.pdf"
+        FIGURES_DIR + run_name + "_" + to_string(simulator.get_num_deployed_beacons()) + "_deployed_beacons_config.pdf"
       );
     }
-    plt::show(true);
+    if (show) {
+      plt::show(true);
+    }
+    plt::close();
 }
 
 
@@ -332,7 +335,7 @@ void plot_uniformity_traj(Simulator simulator, string run_name) {
   if (run_name != "") {
       plt::axis("tight");
       plt::save(
-        FIGURES_DIR + run_name + "_uniformity_traj_" + to_string(simulator.get_num_deployed_agents()) + "_agent.pdf"
+        FIGURES_DIR + run_name + "_uniformity_traj_" + to_string(simulator.get_num_deployed_beacons()) + "_agent.pdf"
       );
   }
   plt::show();

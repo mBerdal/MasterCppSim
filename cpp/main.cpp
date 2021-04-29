@@ -22,12 +22,6 @@ eig::Vector2d get_force_from_beacon(double k_i, eig::Vector2d agent_pos, eig::Ve
 
 int main() {
 
-    // Creating rectangular environment
-    eig::Matrix<double, 2, 4> m;
-    m << -1, 49, 49, -1,
-        -1, -1, 19, 19;
-    list<eig::Matrix<double, 2, eig::Dynamic>> obstacles;
-    obstacles.push_back(m);
     Env environment = Env::ten_by_ten;
 
     // Parameters
@@ -40,20 +34,28 @@ int main() {
     double force_saturation_limit = 4.0;
     double minimum_force_threshold = 0.01;
 
+    // Communication range from paper
+    double rC = 4.0;
+
+    // Parameters for xi-model
     XiParams xi_params;
     xi_params.d_perf = 2; //3;
-    xi_params.d_none = 4.2248985876; //6;
-    xi_params.xi_bar = 20; //20;
+    xi_params.xi_bar = 1; //20;
     xi_params.neigh_treshold = 0.5;
+    xi_params.d_none = xi_params.d_perf +\
+     (M_PI * (rC - xi_params.d_perf)) / acos((2 * xi_params.neigh_treshold / xi_params.xi_bar) - 1);
+
+    // Name for plot storage
+    string general_name = "uniformity_examples/xi_bar_1_d_perf_2";
 
     // Data storage
     json data_storage;
 
 
-    int num_runs_per_swarm_size = 10;
+    int num_runs_per_swarm_size = 20;
 
     // Initializing simulator with parameters
-    for (int num_agents_to_deploy = 50; num_agents_to_deploy < 60; num_agents_to_deploy++) {
+    for (int num_agents_to_deploy = 9; num_agents_to_deploy < 50; num_agents_to_deploy++) {
         vector<double> uniformities = vector<double>(num_runs_per_swarm_size, 0);
         for (int i = 0; i < num_runs_per_swarm_size; i++) {
             Simulator simulator(
@@ -74,15 +76,15 @@ int main() {
 
             // Run simulator
             simulator.simulate();
-            //plot_config(simulator);
-            //plot_uniformity_traj(simulator);
             uniformities[i] = simulator.get_uniformity_after_deploying_num_agents(num_agents_to_deploy);
+            if (i == 0) {
+                plot_config(simulator, false, general_name);
+            }
         }
         data_storage[to_string(num_agents_to_deploy + 1)] = uniformities;
-        cout << "DONE WITH " << num_agents_to_deploy << "\n";
 
         // Plotting result of simulation
-        // string general_name = "sector_random_hallway__xploration";
+        
         // plot_uniformity_traj(simulator, general_name);
         // plot_config(simulator, general_name);
         // for (const pair<int, vector<eig::Vector2i>> & agent_id_loop_initiators_pair : simulator.agent_id_to_loop_initiators_map) {
@@ -91,7 +93,9 @@ int main() {
         // }
     }
     
-    std::ofstream o(DATA_DIR + "uniformity_test_v3.json");
+    std::ofstream o(
+        DATA_DIR + "uniformity_test_xi_bar_" + to_string(xi_params.xi_bar) + "_runs_per_swarm_size_" + to_string(num_runs_per_swarm_size) + ".json"
+    );
     o << std::setw(4) << data_storage << std::endl;
 
 
