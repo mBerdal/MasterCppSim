@@ -39,11 +39,21 @@ int main() {
     xi_params.neigh_threshold = 0.5;
     xi_params.d_none = 6;
 
-
-    vector<double> xi_bars_to_test = {1, 2.5, 5, 10};
-    for (const double & xi_bar : xi_bars_to_test) {
-        paper_compare(10, 50, 20, 2, xi_bar, 0.5);
-    }
+    Simulator sim = Simulator(
+        base_dt,
+        gain_factor,
+        k_obs,
+        Env::stripa,
+        80,
+        num_rays_per_range_sensor,
+        xi_params,
+        force_saturation_limit,
+        minimum_force_threshold,
+        agent_max_steps,
+        ExpVecType::NEIGH_INDUCED_RANDOM
+    );
+    sim.simulate();
+    plot_config(sim, true);
 
     return 0;
 }

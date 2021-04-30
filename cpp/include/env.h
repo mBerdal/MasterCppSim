@@ -27,6 +27,7 @@ public:
 
     static Env ten_by_ten;
     static Env stripa_short;
+    static Env stripa;
 };
 
 #endif
