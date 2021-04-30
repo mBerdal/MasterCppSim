@@ -1,6 +1,6 @@
-#include "env.h"
-#include "sim.h"
-#include "plotter.h"
+#include "include/env.h"
+#include "include/sim.h"
+#include "include/plotter.h"
 
 
 #include <Eigen/Dense>
@@ -24,6 +24,8 @@ int main() {
 
     Env environment = Env::ten_by_ten;
 
+
+
     // Parameters
     int num_rays_per_range_sensor = 1;
     int agent_max_steps = 100000;
@@ -46,11 +48,10 @@ int main() {
      (M_PI * (rC - xi_params.d_perf)) / acos((2 * xi_params.neigh_treshold / xi_params.xi_bar) - 1);
 
     // Name for plot storage
-    string general_name = "uniformity_examples/xi_bar_1_d_perf_2";
+    string general_name = "uniformity_examples/xi_bar_" + to_string(int(xi_params.xi_bar)) + "_d_perf_2";
 
     // Data storage
     json data_storage;
-
 
     int num_runs_per_swarm_size = 20;
 

@@ -1,9 +1,5 @@
-#include "sim.h"
-#include "range_ray.h"
-
-/* temporary */
-#include "plotter.h"
-#include <assert.h>
+#include "include/sim.h"
+#include "include/range_ray.h"
 
 #include <iostream> /* cout */
 #include <math.h>   /* pow */

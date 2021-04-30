@@ -26,6 +26,7 @@ public:
     inline std::vector<Wall> get_walls() const { return walls; }
 
     static Env ten_by_ten;
+    static Env stripa_short;
 };
 
 #endif

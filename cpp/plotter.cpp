@@ -1,6 +1,6 @@
-#include "plotter.h"
-#include "helper.h"
-#include "env.h"
+#include "include/plotter.h"
+#include "include/helper.h"
+#include "include/env.h"
 
 #include "matplotlib-cpp/matplotlibcpp.h"
 namespace plt = matplotlibcpp;

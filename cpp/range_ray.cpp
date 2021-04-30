@@ -1,5 +1,5 @@
-#include "range_ray.h"
-#include "helper.h"
+#include "include/range_ray.h"
+#include "include/helper.h"
 using namespace Eigen;
 
 bool is_between_zero_and_one(double val) {
