@@ -18,13 +18,13 @@ struct XiParams {
         double d_perf;
         double d_none;
         double xi_bar;
-        double neigh_treshold;
+        double neigh_threshold;
 };
 
 class Simulator {
 public:
     Simulator(double base_dt, double gain_factor, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
-            XiParams xi_params, Eigen::Vector2d (*get_force_func)(double, Eigen::Vector2d, Eigen::Vector2d, double, double),
+            XiParams xi_params,
             double force_saturation_limit = 4.0, double minimum_force_threshold = 0.01, int agent_max_steps = 100000,
             ExpVecType use_exp_vec_type = ExpVecType::NEIGH_INDUCED);
     
@@ -106,8 +106,6 @@ private:
 
     ExpVecType use_exp_vec_type;
 
-    Eigen::Vector2d (*get_force_func)(double, Eigen::Vector2d, Eigen::Vector2d, double, double);
-
     /*
     Trajectory data for each agent. The matrix for beacon with ID i is located
     at beacon_traj_data[i]. Each column stores data for a single timestep.
@@ -135,7 +133,8 @@ private:
     */
     double* uniformity_traj;
 
-    Eigen::Vector2d get_neigh_force_on_agent(Eigen::Vector2d agent_pos, std::vector<int> agent_curr_neighs) const;
+    Eigen::Vector2d get_total_neigh_force_on_agent(Eigen::Vector2d agent_pos, std::vector<int> agent_curr_neighs) const;
+    Eigen::Vector2d get_single_neigh_force_on_agent(double k_i, Eigen::Vector2d agent_pos, Eigen::Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) const;
     Eigen::Vector2d get_env_force_agent(Eigen::Vector2d obstacle_avoidance_vec) const;
     Eigen::Vector2d get_obstacle_avoidance_vector(Eigen::Vector2d agent_pos, double agent_yaw) const;
 

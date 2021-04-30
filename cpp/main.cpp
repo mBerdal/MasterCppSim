@@ -2,6 +2,8 @@
 #include "include/sim.h"
 #include "include/plotter.h"
 
+#include "include/paper_compare.h"
+
 
 #include <Eigen/Dense>
 namespace eig = Eigen;
@@ -16,15 +18,9 @@ using namespace std;
 
 #define DATA_DIR string("../../data/")
 
-eig::Vector2d get_force_from_beacon(double k_i, eig::Vector2d agent_pos, eig::Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) {
-    return -k_i * (agent_pos - (beacon_pos + beacon_xi * eig::Rotation2Dd(beacon_exploration_dir).toRotationMatrix() * eig::Vector2d::UnitX()));
-}
-
 int main() {
 
     Env environment = Env::ten_by_ten;
-
-
 
     // Parameters
     int num_rays_per_range_sensor = 1;
@@ -36,69 +32,18 @@ int main() {
     double force_saturation_limit = 4.0;
     double minimum_force_threshold = 0.01;
 
-    // Communication range from paper
-    double rC = 4.0;
-
     // Parameters for xi-model
     XiParams xi_params;
-    xi_params.d_perf = 2; //3;
-    xi_params.xi_bar = 1; //20;
-    xi_params.neigh_treshold = 0.5;
-    xi_params.d_none = xi_params.d_perf +\
-     (M_PI * (rC - xi_params.d_perf)) / acos((2 * xi_params.neigh_treshold / xi_params.xi_bar) - 1);
-
-    // Name for plot storage
-    string general_name = "uniformity_examples/xi_bar_" + to_string(int(xi_params.xi_bar)) + "_d_perf_2";
-
-    // Data storage
-    json data_storage;
-
-    int num_runs_per_swarm_size = 20;
-
-    // Initializing simulator with parameters
-    for (int num_agents_to_deploy = 9; num_agents_to_deploy < 50; num_agents_to_deploy++) {
-        vector<double> uniformities = vector<double>(num_runs_per_swarm_size, 0);
-        for (int i = 0; i < num_runs_per_swarm_size; i++) {
-            Simulator simulator(
-                base_dt,
-                gain_factor,
-                k_obs,
-                environment,
-                num_agents_to_deploy,
-                num_rays_per_range_sensor,
-                xi_params,
-                *get_force_from_beacon,
-                force_saturation_limit,
-                minimum_force_threshold,
-                agent_max_steps,
-                ExpVecType::NEIGH_INDUCED_RANDOM
-            );
+    xi_params.d_perf = 3;
+    xi_params.xi_bar = 20;
+    xi_params.neigh_threshold = 0.5;
+    xi_params.d_none = 6;
 
 
-            // Run simulator
-            simulator.simulate();
-            uniformities[i] = simulator.get_uniformity_after_deploying_num_agents(num_agents_to_deploy);
-            if (i == 0) {
-                plot_config(simulator, false, general_name);
-            }
-        }
-        data_storage[to_string(num_agents_to_deploy + 1)] = uniformities;
-
-        // Plotting result of simulation
-        
-        // plot_uniformity_traj(simulator, general_name);
-        // plot_config(simulator, general_name);
-        // for (const pair<int, vector<eig::Vector2i>> & agent_id_loop_initiators_pair : simulator.agent_id_to_loop_initiators_map) {
-        //     plot_single_beacon_traj(simulator, agent_id_loop_initiators_pair.first, true, true, general_name + "looping");
-        //     plot_agent_neigh_traj(simulator, agent_id_loop_initiators_pair.first, general_name + "looping");
-        // }
+    vector<double> xi_bars_to_test = {1, 2.5, 5, 10};
+    for (const double & xi_bar : xi_bars_to_test) {
+        paper_compare(10, 50, 20, 2, xi_bar, 0.5);
     }
-    
-    std::ofstream o(
-        DATA_DIR + "uniformity_test_xi_bar_" + to_string(xi_params.xi_bar) + "_runs_per_swarm_size_" + to_string(num_runs_per_swarm_size) + ".json"
-    );
-    o << std::setw(4) << data_storage << std::endl;
-
 
     return 0;
 }

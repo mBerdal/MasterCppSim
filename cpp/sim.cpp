@@ -7,10 +7,9 @@
 namespace eig = Eigen;
 using namespace std;
 
-Simulator::Simulator(double base_dt, double gain_factor, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
-                    XiParams xi_params, eig::Vector2d (*get_force_func)(double, eig::Vector2d, eig::Vector2d, double, double),
-                    double force_saturation_limit, double minimum_force_threshold, int agent_max_steps,
-                    ExpVecType use_exp_vec_type) {
+Simulator::Simulator(double base_dt, double gain_factor, double k_obs, Env environment, int num_agents_to_deploy,
+                    int num_rays_per_range_sensor, XiParams xi_params, double force_saturation_limit, 
+                    double minimum_force_threshold, int agent_max_steps, ExpVecType use_exp_vec_type) {
 
     this->base_dt = base_dt;
     this->gain_factor = gain_factor;
@@ -18,7 +17,6 @@ Simulator::Simulator(double base_dt, double gain_factor, double k_obs, Env envir
     RangeRay::env = environment;
     this->environment = environment;
     this->num_agents_to_deploy = num_agents_to_deploy;
-    this->get_force_func = get_force_func;
     this->force_saturation_limit = force_saturation_limit;
     this->minimum_force_threshold = minimum_force_threshold;
     this->agent_max_steps = agent_max_steps;
@@ -153,7 +151,7 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     }
 
 
-    eig::Vector2d F_n = get_neigh_force_on_agent(
+    eig::Vector2d F_n = get_total_neigh_force_on_agent(
         curr_deploying_agent_pos,
         curr_deploying_agent_neighs
     );
@@ -242,7 +240,7 @@ double Simulator::get_beacon_nominal_weight(int beacon_id) const {
     return pow(gain_factor, beacon_id);
 }
 
-eig::Vector2d Simulator::get_neigh_force_on_agent(eig::Vector2d agent_pos, vector<int> agent_curr_neighs) const {
+eig::Vector2d Simulator::get_total_neigh_force_on_agent(eig::Vector2d agent_pos, vector<int> agent_curr_neighs) const {
     eig::Vector2d F = eig::Vector2d::Zero();
 
     double sum_of_weights = 0;
@@ -258,10 +256,15 @@ eig::Vector2d Simulator::get_neigh_force_on_agent(eig::Vector2d agent_pos, vecto
 
         double k_i = (get_beacon_nominal_weight(beacon_id)) / sum_of_weights;
 
-        F += (*get_force_func)(k_i, agent_pos, other_beacon_pos, exploration_angles[beacon_id][use_exp_vec_type].back(), xi);
+        F += get_single_neigh_force_on_agent(k_i, agent_pos, other_beacon_pos, exploration_angles[beacon_id][use_exp_vec_type].back(), xi);
     }
     return F;
 }
+
+eig::Vector2d Simulator::get_single_neigh_force_on_agent(double k_i, eig::Vector2d agent_pos, eig::Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) const {
+    return -k_i * (agent_pos - (beacon_pos + beacon_xi * eig::Rotation2Dd(beacon_exploration_dir).toRotationMatrix() * eig::Vector2d::UnitX()));
+}
+
 
 eig::Vector2d Simulator::get_env_force_agent(eig::Vector2d obstacle_avoidance_vec) const {
     return k_obs * (1 / (RANGE_SENSOR_MAX_RANGE_METERS - obstacle_avoidance_vec.norm())) * obstacle_avoidance_vec;
@@ -308,7 +311,7 @@ vector<int> Simulator::get_beacon_neighbors(int beacon_id, eig::Vector2d beacon_
         if (other_beacon_id != beacon_id) {
             eig::Vector2d other_beacon_pos = beacon_traj_data[other_beacon_id].topRightCorner(2, 1);
             double dist = (beacon_pos - other_beacon_pos).norm();
-            if (get_Xi_from_model(dist, xi_params.d_perf, xi_params.d_none, xi_params.xi_bar) > xi_params.neigh_treshold) {
+            if (get_Xi_from_model(dist, xi_params.d_perf, xi_params.d_none, xi_params.xi_bar) > xi_params.neigh_threshold) {
                 neighs.push_back(other_beacon_id);
             }
         }

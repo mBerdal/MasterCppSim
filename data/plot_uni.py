@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    with open("uniformity_test_xi_bar_1,000000_runs_per_swarm_size_20.json") as f:
+    data_source_name = "xi_bar_10.00_d_perf_2.00_d_none_4.34_tau_xi_0.50_runs_per_swarm_size_20";
+    with open(data_source_name + ".json") as f:
         """
         data formated as dict where keys correspond to the number
         of beacons deployed, and values are arrays of lenght num_runs_per_iteration containing
@@ -35,5 +36,5 @@ if __name__ == "__main__":
     ax.grid(linestyle='dotted')
     ax.set_xlabel("Number of deployed beacons")
     ax.set_ylabel("Uniformity")
-    fig.savefig("uniformity_ten_by_ten_xi_bar_1_20_runs_per_swarm_size.pdf")
+    fig.savefig("../figures/paper_uniformity_compare/uniformities/" + data_source_name + ".pdf")
     plt.show()
