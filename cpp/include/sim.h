@@ -15,10 +15,7 @@ enum ExpVecType {
 };
 
 struct XiParams {
-        double d_perf;
-        double d_none;
-        double xi_bar;
-        double neigh_threshold;
+    double d_perf, d_none, xi_bar, neigh_threshold;
 };
 
 class Simulator {

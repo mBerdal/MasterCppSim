@@ -10,6 +10,9 @@ namespace plt = matplotlibcpp;
 #include <iostream>
 using namespace std;
 
+#include <experimental/filesystem>
+namespace fs = experimental::filesystem;
+
 #define FIGURES_DIR string("../../figures/")
 
 struct interpolation_color_t {
@@ -28,8 +31,26 @@ struct interpolation_color_t {
 #define PURPLE "#c4169c"
 
 #define SCATTER_DOT_SIZE 40.0
+#define PTS_PER_METER 40
 
 namespace eig = Eigen;
+
+void show_and_close(bool show) {
+    if (show) {
+      plt::show(true);
+    }
+    plt::close();
+}
+
+string get_saving_base_path(Simulator simulator) {
+  return FIGURES_DIR + simulator.get_environment().get_name() + "/" + to_string(simulator.get_num_deployed_beacons()) + "_beacons";
+}
+
+void save_plot(Simulator simulator, string run_name, string plot_name) {
+  string save_path = get_saving_base_path(simulator) + "/" + run_name;
+  fs::create_directories(save_path);
+  plt::save(save_path + "/" + plot_name + ".pdf");
+}
 
 string get_interpolated_color(double interpolator, interpolation_color_t gradient) {
   int r = floor(gradient.end_r*interpolator + gradient.base_r*(1-interpolator));
@@ -51,9 +72,11 @@ void plot_line_segment(eig::Vector2d start, eig::Vector2d end, const map<string,
 }
 
 void plot_environment(Simulator simulator, bool show) {
-  if (show) {
-    plt::figure_size(500, 500);
-  }
+  plt::figure_size(
+      PTS_PER_METER * (simulator.get_environment().get_bounding_box_coords().max_x - simulator.get_environment().get_bounding_box_coords().min_x),
+      PTS_PER_METER * (simulator.get_environment().get_bounding_box_coords().max_y - simulator.get_environment().get_bounding_box_coords().min_y)
+  );
+
   for (Wall const &w : simulator.get_environment().get_walls()) {
       plot_line_segment(
         w.get_start(),
@@ -62,13 +85,12 @@ void plot_environment(Simulator simulator, bool show) {
       );
   }
   if (show) {
-    plt::show();
+    show_and_close(show);
   }
 }
 
 void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool add_legend, string run_name) {
-    if (show) {
-      plt::figure_size(500, 500);
+    if (!plt::fignum_exists(1) || show) {
       plot_environment(simulator, false);
     }
     
@@ -132,20 +154,15 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
 
     if (run_name != "") {
       plt::axis("tight");
-      plt::save(
-        FIGURES_DIR + run_name + "_" + to_string(simulator.get_num_deployed_beacons()) + "_deployed_beacons_" + to_string(beacon_id) + "_traj.pdf"
-      );
+      save_plot(simulator, run_name, "agent_" + to_string(beacon_id) + "_traj");
     }
     if (show) {
-      plt::show(true);
+      show_and_close(show);
     }
 }
 
 void plot_config(Simulator simulator, bool show, string run_name) {
-    plt::figure_size(750, 750);
-
     plot_environment(simulator, false);
-    
 
     for (int beacon_id = 0; beacon_id < simulator.get_num_deployed_beacons(); beacon_id++) {
       plot_single_beacon_traj(simulator, beacon_id, false, beacon_id == 0);
@@ -157,15 +174,9 @@ void plot_config(Simulator simulator, bool show, string run_name) {
     plt::legend({{"loc", "upper right"}});
 
     if (run_name != "") {
-      plt::axis("tight");
-      plt::save(
-        FIGURES_DIR + run_name + "_" + to_string(simulator.get_num_deployed_beacons()) + "_deployed_beacons_config.pdf"
-      );
+      save_plot(simulator, run_name, "config");
     }
-    if (show) {
-      plt::show(true);
-    }
-    plt::close();
+    show_and_close(show);
 }
 
 
@@ -206,11 +217,9 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name
 
     if (run_name != "") {
       plt::axis("tight");
-        plt::save(
-          FIGURES_DIR + run_name + "_force_v_time_agent_" + to_string(agent_id) + ".pdf"
-        );
+      save_plot(simulator, run_name, "agent_" + to_string(agent_id) + "_force_v_time");
     }
-    plt::show(true);
+    show_and_close(true);
 }
 
 void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name) {
@@ -250,11 +259,11 @@ void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name
 
     if (run_name != "") {
       plt::axis("tight");
-      plt::save(
-        FIGURES_DIR + run_name + "_force_v_dist_agent_" + to_string(agent_id) + ".pdf"
-      );
+      save_plot(simulator, run_name, "agent_" + to_string(agent_id) + "_force_v_dist");
+
     }
-    plt::show(true);
+    show_and_close(true);
+
 }
 
 void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
@@ -308,14 +317,13 @@ void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
     plt::title(R"(Neighbor set evolution for $\nu_{)" + to_string(agent_id) + R"(}$)");
     if (run_name != "") {
       plt::axis("tight");
-      plt::save(
-        FIGURES_DIR + run_name + "_neigh_traj_agent_" + to_string(agent_id) + ".pdf"
-      );
+      save_plot(simulator, run_name, "agent_" + to_string(agent_id) + "_neigh_traj");
+
     }
-    plt::show();
+    show_and_close(true);
 }
 
-void plot_uniformity_traj(Simulator simulator, string run_name) {
+void plot_uniformity_traj(Simulator simulator, bool show, string run_name) {
   plt::figure_size((16 / 9.0) * 400, 400);
   vector<double> num_agents;
   vector<double> uniformity;
@@ -334,11 +342,9 @@ void plot_uniformity_traj(Simulator simulator, string run_name) {
   plt::title("Uniformity evolution");
   if (run_name != "") {
       plt::axis("tight");
-      plt::save(
-        FIGURES_DIR + run_name + "_uniformity_traj_" + to_string(simulator.get_num_deployed_beacons()) + "_agent.pdf"
-      );
+      save_plot(simulator, run_name, "uniformity_traj");
   }
-  plt::show();
+  show_and_close(show);
 }
 
 void plot_Xi_model() {
@@ -389,6 +395,7 @@ void plot_sector(CircleSector sector, string clr) {
     sector_y,
     {{"color", "black"}, {"linestyle", "--"}}
   );
+  show_and_close(true);
 }
 
 void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<CircleSector> invalid_sectors, eig::Vector2d o_hat) {
@@ -451,5 +458,5 @@ void plot_sectors(int beacon_id, vector<CircleSector> valid_sectors, vector<Circ
 
   plt::title(R"(Sectors for agent $\nu_{)" + to_string(beacon_id) + R"(}$)");
   plt::axis("equal");
-  plt::show();
+  show_and_close(true);
 }

@@ -5,26 +5,40 @@
 #include <list>
 #include <vector>
 
+struct bounding_box_t {
+    double min_x, max_x, min_y, max_y;
+};
+
 class Wall {
 private:
     Eigen::Vector2d start_point;
     Eigen::Vector2d end_point;
+    bounding_box_t bounding_box;
 
 public:
-    Wall(Eigen::Vector2d start_point, Eigen::Vector2d end_point) : start_point(start_point), end_point(end_point) {}
+    Wall(Eigen::Vector2d start_point, Eigen::Vector2d end_point);
     inline Eigen::Vector2d get_start() const { return start_point; }
     inline Eigen::Vector2d get_end() const { return end_point; }
+    
+    inline bounding_box_t get_bounding_box_coords() const { return bounding_box; }
 };
+
 
 class Env {
 private:
     std::vector<Wall> walls;
-public:
-    Env() : walls(std::vector<Wall>()) {}
-    Env(std::vector<Wall> walls) : walls(walls) {}
-    Env(std::list<Eigen::Matrix<double, 2, Eigen::Dynamic>> obstacles);
-    inline std::vector<Wall> get_walls() const { return walls; }
+    std::string name;
+    bounding_box_t bounding_box;
 
+public:
+    Env(std::string name="noname");
+    Env(std::vector<Wall> walls, std::string name="noname");
+    Env(std::list<Eigen::Matrix<double, 2, Eigen::Dynamic>> obstacles, std::string name="noname");
+    
+    inline std::vector<Wall> get_walls() const { return walls; }
+    inline std::string get_name() const { return name; }
+    inline bounding_box_t get_bounding_box_coords() const { return bounding_box; }
+    
     static Env ten_by_ten;
     static Env stripa_short;
     static Env stripa;

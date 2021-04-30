@@ -39,21 +39,30 @@ int main() {
     xi_params.neigh_threshold = 0.5;
     xi_params.d_none = 6;
 
-    Simulator sim = Simulator(
-        base_dt,
-        gain_factor,
-        k_obs,
-        Env::stripa,
-        80,
-        num_rays_per_range_sensor,
-        xi_params,
-        force_saturation_limit,
-        minimum_force_threshold,
-        agent_max_steps,
-        ExpVecType::NEIGH_INDUCED_RANDOM
-    );
-    sim.simulate();
-    plot_config(sim, true);
+    vector<int> n_agents_array = {9, 19, 39, 79};
+    for (const int & n_agents : n_agents_array) {
+        Simulator sim = Simulator(
+            base_dt,
+            gain_factor,
+            k_obs,
+            Env::stripa,
+            n_agents,
+            num_rays_per_range_sensor,
+            xi_params,
+            force_saturation_limit,
+            minimum_force_threshold,
+            agent_max_steps,
+            ExpVecType::NEIGH_INDUCED_RANDOM
+        );
+
+        string simulation_base_name = "try_1";
+        sim.simulate();
+        plot_config(sim, false, simulation_base_name);
+        plot_uniformity_traj(sim, false, simulation_base_name);
+        plot_single_beacon_traj(sim, 1, false, true, simulation_base_name);
+
+    }
+
 
     return 0;
 }

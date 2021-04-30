@@ -62,7 +62,9 @@
         "random": "cpp",
         "mutex": "cpp",
         "valarray": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "codecvt": "cpp",
+        "filesystem": "cpp"
     },
     "cSpell.words": [
         "eigen",
