@@ -11,7 +11,7 @@ bool is_between_zero_and_max_bound(double val, double max_bound){
 
 Env RangeRay::env = Env();
 
-double RangeRay::sense(Vector2d ray_origin, double ray_orientation, double max_range) {
+double RangeRay::sense(const Vector2d & ray_origin, double ray_orientation, double max_range) {
     const Vector2d b = Rotation2D<double>(ray_orientation).toRotationMatrix() * Vector2d::UnitX();
 
     /*
@@ -30,7 +30,7 @@ double RangeRay::sense(Vector2d ray_origin, double ray_orientation, double max_r
 
     double min_sensed_range = max_range;
 
-    for (Wall const &w : env.get_walls()) {
+    for (const Wall & w : env.get_walls()) {
         const Vector2d a = w.get_end() - w.get_start();
         const double crs = cross(a, b);
         if (crs != 0) {

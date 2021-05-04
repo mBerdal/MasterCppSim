@@ -20,8 +20,8 @@ struct XiParams {
 
 class Simulator {
 public:
-    Simulator(double base_dt, double gain_factor, double k_obs, Env environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
-            XiParams xi_params,
+    Simulator(double base_dt, double gain_factor, double k_obs, const Env & environment, int num_agents_to_deploy, int num_rays_per_range_sensor,
+            const XiParams & xi_params,
             double force_saturation_limit = 4.0, double minimum_force_threshold = 0.01, int agent_max_steps = 100000,
             ExpVecType use_exp_vec_type = ExpVecType::NEIGH_INDUCED);
     
@@ -130,20 +130,20 @@ private:
     */
     double* uniformity_traj;
 
-    Eigen::Vector2d get_total_neigh_force_on_agent(Eigen::Vector2d agent_pos, std::vector<int> agent_curr_neighs) const;
-    Eigen::Vector2d get_single_neigh_force_on_agent(double k_i, Eigen::Vector2d agent_pos, Eigen::Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) const;
-    Eigen::Vector2d get_env_force_agent(Eigen::Vector2d obstacle_avoidance_vec) const;
-    Eigen::Vector2d get_obstacle_avoidance_vector(Eigen::Vector2d agent_pos, double agent_yaw) const;
+    Eigen::Vector2d get_total_neigh_force_on_agent(const Eigen::Vector2d & agent_pos, const std::vector<int> & agent_curr_neighs) const;
+    Eigen::Vector2d get_single_neigh_force_on_agent(double k_i, const Eigen::Vector2d & agent_pos, const Eigen::Vector2d & beacon_pos, double beacon_exploration_dir, double beacon_xi) const;
+    Eigen::Vector2d get_env_force_agent(const Eigen::Vector2d & obstacle_avoidance_vec) const;
+    Eigen::Vector2d get_obstacle_avoidance_vector(const Eigen::Vector2d & agent_pos, double agent_yaw) const;
 
-    Eigen::Matrix<double, 4, 2> get_sensed_ranges_and_angles(Eigen::Vector2d agent_pos, double agent_yaw) const;
+    Eigen::Matrix<double, 4, 2> get_sensed_ranges_and_angles(const Eigen::Vector2d & agent_pos, double agent_yaw) const;
 
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
 
-    std::vector<int> get_beacon_neighbors(int beacon_id, Eigen::Vector2d beacon_pos, int max_neigh_id) const;
-    void set_all_exp_vec_types_for_beacon(int beacon_id, std::vector<int> neighbor_ids, Eigen::Vector2d obstacle_avoidance_vec);
+    std::vector<int> get_beacon_neighbors(int beacon_id, const Eigen::Vector2d & beacon_pos, int max_neigh_id) const;
+    void set_all_exp_vec_types_for_beacon(int beacon_id, const std::vector<int> &  neighbor_ids, const Eigen::Vector2d & obstacle_avoidance_vec);
 
-    double get_avg_angle_away_from_neighs(int beacon_id, std::vector<int> neighbor_ids) const;
-    double get_wall_adjusted_angle(double nominal_angle, Eigen::Vector2d obstacle_avoidance_vec) const;
+    double get_avg_angle_away_from_neighs(int beacon_id, const std::vector<int> &  neighbor_ids) const;
+    double get_wall_adjusted_angle(double nominal_angle, const Eigen::Vector2d & obstacle_avoidance_vec) const;
     
 
     enum LoopCheckResult {
@@ -160,10 +160,10 @@ private:
     /*
     NEW STUFF
     */
-    CircleSector get_exploration_sector(int curr_deploying_agent_id, std::vector<int> agent_neighbors, Eigen::Vector2d obstacle_avoidance_vec) const;
+    CircleSector get_exploration_sector(int curr_deploying_agent_id, const std::vector<int> &  agent_neighbors, const Eigen::Vector2d & obstacle_avoidance_vec) const;
     void compute_beacon_exploration_dir(int beacon_id, int max_neigh_id);
 
-    inline bool did_neigh_set_change(int agent_id, std::vector<int> new_neigh_set) { return !vectors_equal(neighbor_set_traj[agent_id - 1].back().second, new_neigh_set); }
+    inline bool did_neigh_set_change(int agent_id, const std::vector<int> & new_neigh_set) { return !vectors_equal(neighbor_set_traj[agent_id - 1].back().second, new_neigh_set); }
 
     void compute_uniformity(int max_agent_id);
 };

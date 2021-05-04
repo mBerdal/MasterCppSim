@@ -1,16 +1,16 @@
 #include "include/env.h"
 namespace eig = Eigen;
 
-Wall::Wall(eig::Vector2d start_point, eig::Vector2d end_point) : start_point(start_point), end_point(end_point) {
+Wall::Wall(const eig::Vector2d & start_point, const eig::Vector2d & end_point) : start_point(start_point), end_point(end_point) {
     bounding_box.min_x = start_point.x() < end_point.x() ? start_point.x() : end_point.x();
     bounding_box.max_x = start_point.x() > end_point.x() ? start_point.x() : end_point.x();
     bounding_box.min_y = start_point.y() < end_point.y() ? start_point.y() : end_point.y();
     bounding_box.max_y = start_point.y() > end_point.y() ? start_point.y() : end_point.y();
 }
 
-Env::Env(std::string name) : walls(std::vector<Wall>()), name(name), bounding_box({0, 0, 0, 0}) {}
+Env::Env(const std::string & name) : walls(std::vector<Wall>()), name(name), bounding_box({0, 0, 0, 0}) {}
 
-Env::Env(std::vector<Wall> walls, std::string name) : walls(walls), name(name) {
+Env::Env(const std::vector<Wall> & walls, const std::string & name) : walls(walls), name(name) {
     bounding_box = {
         .min_x = walls[0].get_bounding_box().min_x,
         .max_x = walls[0].get_bounding_box().max_x,
@@ -33,7 +33,7 @@ Env::Env(std::vector<Wall> walls, std::string name) : walls(walls), name(name) {
     }
 }
 
-Env::Env(std::list<eig::Matrix<double, 2, eig::Dynamic>> obstacles, std::string name) {
+Env::Env(const std::list<eig::Matrix<double, 2, eig::Dynamic>> & obstacles, const std::string & name) {
     std::vector<Wall> tmp;
     for (eig::Matrix<double, 2, eig::Dynamic> const &obs : obstacles) {
         tmp.emplace_back(obs.col(0), obs.col(obs.cols() - 1));

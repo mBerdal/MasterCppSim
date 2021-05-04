@@ -14,7 +14,7 @@ private:
     bounding_box_t bounding_box;
 
 public:
-    Wall(Eigen::Vector2d start_point, Eigen::Vector2d end_point);
+    Wall(const Eigen::Vector2d & start_point, const Eigen::Vector2d & end_point);
     inline Eigen::Vector2d get_start() const { return start_point; }
     inline Eigen::Vector2d get_end() const { return end_point; }
 
@@ -29,9 +29,9 @@ private:
     bounding_box_t bounding_box;
 
 public:
-    Env(std::string name="noname");
-    Env(std::vector<Wall> walls, std::string name="noname");
-    Env(std::list<Eigen::Matrix<double, 2, Eigen::Dynamic>> obstacles, std::string name="noname");
+    Env(const std::string & name="noname");
+    Env(const std::vector<Wall> & walls, const std::string & name="noname");
+    Env(const std::list<Eigen::Matrix<double, 2, Eigen::Dynamic>> & obstacles, const std::string & name="noname");
     
     inline std::vector<Wall> get_walls() const { return walls; }
     inline std::string get_name() const { return name; }

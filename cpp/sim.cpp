@@ -7,8 +7,8 @@
 namespace eig = Eigen;
 using namespace std;
 
-Simulator::Simulator(double base_dt, double gain_factor, double k_obs, Env environment, int num_agents_to_deploy,
-                    int num_rays_per_range_sensor, XiParams xi_params, double force_saturation_limit, 
+Simulator::Simulator(double base_dt, double gain_factor, double k_obs, const Env & environment, int num_agents_to_deploy,
+                    int num_rays_per_range_sensor, const XiParams & xi_params, double force_saturation_limit, 
                     double minimum_force_threshold, int agent_max_steps, ExpVecType use_exp_vec_type) {
 
     this->base_dt = base_dt;
@@ -240,7 +240,7 @@ double Simulator::get_beacon_nominal_weight(int beacon_id) const {
     return pow(gain_factor, beacon_id);
 }
 
-eig::Vector2d Simulator::get_total_neigh_force_on_agent(eig::Vector2d agent_pos, vector<int> agent_curr_neighs) const {
+eig::Vector2d Simulator::get_total_neigh_force_on_agent(const eig::Vector2d & agent_pos, const vector<int> & agent_curr_neighs) const {
     eig::Vector2d F = eig::Vector2d::Zero();
 
     double sum_of_weights = 0;
@@ -261,16 +261,16 @@ eig::Vector2d Simulator::get_total_neigh_force_on_agent(eig::Vector2d agent_pos,
     return F;
 }
 
-eig::Vector2d Simulator::get_single_neigh_force_on_agent(double k_i, eig::Vector2d agent_pos, eig::Vector2d beacon_pos, double beacon_exploration_dir, double beacon_xi) const {
+eig::Vector2d Simulator::get_single_neigh_force_on_agent(double k_i, const eig::Vector2d & agent_pos, const eig::Vector2d & beacon_pos, double beacon_exploration_dir, double beacon_xi) const {
     return -k_i * (agent_pos - (beacon_pos + beacon_xi * eig::Rotation2Dd(beacon_exploration_dir).toRotationMatrix() * eig::Vector2d::UnitX()));
 }
 
 
-eig::Vector2d Simulator::get_env_force_agent(eig::Vector2d obstacle_avoidance_vec) const {
+eig::Vector2d Simulator::get_env_force_agent(const eig::Vector2d & obstacle_avoidance_vec) const {
     return k_obs * (1 / (RANGE_SENSOR_MAX_RANGE_METERS - obstacle_avoidance_vec.norm())) * obstacle_avoidance_vec;
 }
 
-eig::Vector2d Simulator::get_obstacle_avoidance_vector(eig::Vector2d agent_pos, double agent_yaw) const {
+eig::Vector2d Simulator::get_obstacle_avoidance_vector(const eig::Vector2d & agent_pos, double agent_yaw) const {
     eig::Matrix<double, 4, 2> sensed_ranges_and_angles = get_sensed_ranges_and_angles(
         agent_pos,
         agent_yaw
@@ -284,7 +284,7 @@ eig::Vector2d Simulator::get_obstacle_avoidance_vector(eig::Vector2d agent_pos, 
     return o_norm <= RANGE_SENSOR_MAX_RANGE_METERS ? o : (RANGE_SENSOR_MAX_RANGE_METERS / o_norm)*o;
 }
 
-eig::Matrix<double, 4, 2> Simulator::get_sensed_ranges_and_angles(eig::Vector2d agent_pos, double agent_yaw) const {
+eig::Matrix<double, 4, 2> Simulator::get_sensed_ranges_and_angles(const eig::Vector2d & agent_pos, double agent_yaw) const {
 
     eig::Matrix<double, 4, 2> sensed_ranges_and_angles;
     sensed_ranges_and_angles.col(0) = ((double)RANGE_SENSOR_MAX_RANGE_METERS) * eig::Vector4d::Ones();
@@ -305,7 +305,7 @@ eig::Matrix<double, 4, 2> Simulator::get_sensed_ranges_and_angles(eig::Vector2d 
     return sensed_ranges_and_angles;
 }
 
-vector<int> Simulator::get_beacon_neighbors(int beacon_id, eig::Vector2d beacon_pos, int max_neigh_id) const {
+vector<int> Simulator::get_beacon_neighbors(int beacon_id, const eig::Vector2d & beacon_pos, int max_neigh_id) const {
     vector<int> neighs;
     for (int other_beacon_id=0; other_beacon_id <= max_neigh_id; other_beacon_id++) {
         if (other_beacon_id != beacon_id) {
@@ -319,7 +319,7 @@ vector<int> Simulator::get_beacon_neighbors(int beacon_id, eig::Vector2d beacon_
     return neighs;
 }
 
-CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vector<int> agent_neighbors, eig::Vector2d obstacle_avoidance_vec) const {
+CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, const vector<int> & agent_neighbors, const eig::Vector2d & obstacle_avoidance_vec) const {
     if (agent_neighbors.size() == 0) {
         cout << "No neighbors for agent " << curr_deploying_agent_id << ". Using 0 as bisection based angle\n";
         return CircleSector(0, 0);
@@ -364,10 +364,10 @@ CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vect
             is_valid_sector = (sector_max_bound > sector_min_bound) ? sector_start >= sector_min_bound && sector_start < sector_max_bound : sector_start >= sector_min_bound || sector_start < sector_max_bound;
         }
         if (is_valid_sector) {
-            valid_sectors.push_back(CircleSector(sector_start, sector_end));
+            valid_sectors.emplace_back(sector_start, sector_end);
         }
         else {
-            invalid_sectors.push_back(CircleSector(sector_start, sector_end));
+            invalid_sectors.emplace_back(sector_start, sector_end);
         }
     }
 
@@ -379,7 +379,7 @@ CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, vect
     return valid_sector_with_max_central_angle;
 }
 
-void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neighbor_ids, eig::Vector2d obstacle_avoidance_vec){
+void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, const vector<int> & neighbor_ids, const eig::Vector2d & obstacle_avoidance_vec){
     CircleSector exploration_sector = get_exploration_sector(beacon_id, neighbor_ids, obstacle_avoidance_vec);
 
     exploration_angles[beacon_id][ExpVecType::NEIGH_INDUCED].push_back(
@@ -391,7 +391,7 @@ void Simulator::set_all_exp_vec_types_for_beacon(int beacon_id, vector<int> neig
     exploration_angles[beacon_id][ExpVecType::TOTAL].push_back(get_beacon_exploration_angles(beacon_id, NEIGH_INDUCED).back());
 }
 
-double Simulator::get_avg_angle_away_from_neighs(int beacon_id, vector<int> neighbor_ids) const {
+double Simulator::get_avg_angle_away_from_neighs(int beacon_id, const vector<int> & neighbor_ids) const {
     if (neighbor_ids.size() == 0) {
         cout << "Beacon " << beacon_id << " has no neighbors. Using zero as exploration angle.\n";
         return 0;
@@ -458,7 +458,7 @@ Simulator::LoopCheckResult Simulator::get_loop_check_result(int curr_deploying_a
     return result;
 }
 
-double Simulator::get_wall_adjusted_angle(double nominal_angle, eig::Vector2d obstacle_avoidance_vec) const {
+double Simulator::get_wall_adjusted_angle(double nominal_angle, const eig::Vector2d & obstacle_avoidance_vec) const {
     double o_hat_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
     double o_hat_norm = obstacle_avoidance_vec.norm();
 

@@ -16,14 +16,14 @@ public:
 
 double get_Xi_from_model(double d, double d_perf, double d_none, double xi_bar);
 
-double cross(Eigen::Matrix<double, 2, 1> a, Eigen::Matrix<double, 2, 1> b);
+double cross(const Eigen::Matrix<double, 2, 1> & a, const Eigen::Matrix<double, 2, 1> & b);
 
-std::vector<double> eig_vec2std_vec(Eigen::VectorXd vec);
+std::vector<double> eig_vec2std_vec(const Eigen::VectorXd & vec);
 
-Eigen::VectorXd clamp_vec (Eigen::VectorXd vec, double threshold);
+Eigen::VectorXd clamp_vec (const Eigen::VectorXd & vec, double threshold);
 
 template<typename T>
-bool vectors_equal(std::vector<T> v1, std::vector<T> v2) {
+bool vectors_equal(const std::vector<T> & v1, const std::vector<T> & v2) {
     int size = v1.size();
     if (size != v2.size()) {
         return false;
@@ -57,6 +57,6 @@ struct bounding_box_t {
     double min_x, max_x, min_y, max_y;
 };
 
-bool boxes_intersect (bounding_box_t a, bounding_box_t b);
+bool boxes_intersect (const bounding_box_t & a, const bounding_box_t & b);
 
 #endif

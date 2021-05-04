@@ -55,7 +55,7 @@ int main() {
             ExpVecType::NEIGH_INDUCED_RANDOM
         );
 
-        string simulation_base_name = "try_1";
+        string simulation_base_name = "try_2";
         sim.simulate();
         plot_config(sim, false, simulation_base_name);
         plot_uniformity_traj(sim, false, simulation_base_name);
