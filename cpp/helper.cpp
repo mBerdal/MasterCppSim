@@ -49,3 +49,7 @@ double clamp_pm_pi(double ang) {
 double clamp_zero_two_pi(double ang) {
     return wrap_min_max(ang, 0, 2 * M_PI);
 }
+
+bool boxes_intersect (bounding_box_t a, bounding_box_t b) {
+    return !(a.min_x > b.max_x || a.max_x < b.min_x || a.max_y < b.min_y || a.min_y > b.max_y);
+}

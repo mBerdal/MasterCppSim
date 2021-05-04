@@ -12,23 +12,23 @@ Env::Env(std::string name) : walls(std::vector<Wall>()), name(name), bounding_bo
 
 Env::Env(std::vector<Wall> walls, std::string name) : walls(walls), name(name) {
     bounding_box = {
-        .min_x = walls[0].get_bounding_box_coords().min_x,
-        .max_x = walls[0].get_bounding_box_coords().max_x,
-        .min_y = walls[0].get_bounding_box_coords().min_y,
-        .max_y = walls[0].get_bounding_box_coords().max_y,
+        .min_x = walls[0].get_bounding_box().min_x,
+        .max_x = walls[0].get_bounding_box().max_x,
+        .min_y = walls[0].get_bounding_box().min_y,
+        .max_y = walls[0].get_bounding_box().max_y,
     };
     for (int i = 1; i < walls.size(); i++) {
-        if (walls[i].get_bounding_box_coords().min_x < bounding_box.min_x) {
-            bounding_box.min_x = walls[i].get_bounding_box_coords().min_x;
+        if (walls[i].get_bounding_box().min_x < bounding_box.min_x) {
+            bounding_box.min_x = walls[i].get_bounding_box().min_x;
         }
-        if (walls[i].get_bounding_box_coords().max_x > bounding_box.max_x) {
-            bounding_box.max_x = walls[i].get_bounding_box_coords().max_x;
+        if (walls[i].get_bounding_box().max_x > bounding_box.max_x) {
+            bounding_box.max_x = walls[i].get_bounding_box().max_x;
         }
-        if (walls[i].get_bounding_box_coords().min_y < bounding_box.min_y) {
-            bounding_box.min_y = walls[i].get_bounding_box_coords().min_y;
+        if (walls[i].get_bounding_box().min_y < bounding_box.min_y) {
+            bounding_box.min_y = walls[i].get_bounding_box().min_y;
         }
-        if (walls[i].get_bounding_box_coords().max_y > bounding_box.max_y) {
-            bounding_box.max_y = walls[i].get_bounding_box_coords().max_y;
+        if (walls[i].get_bounding_box().max_y > bounding_box.max_y) {
+            bounding_box.max_y = walls[i].get_bounding_box().max_y;
         }
     }
 }

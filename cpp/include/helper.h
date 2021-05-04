@@ -53,4 +53,10 @@ public:
     static bool cmp(const CircleSector & lhs, const CircleSector & rhs) { return lhs.get_central_angle() < rhs.get_central_angle(); }
 };
 
+struct bounding_box_t {
+    double min_x, max_x, min_y, max_y;
+};
+
+bool boxes_intersect (bounding_box_t a, bounding_box_t b);
+
 #endif

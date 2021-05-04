@@ -14,6 +14,20 @@ Env RangeRay::env = Env();
 double RangeRay::sense(Vector2d ray_origin, double ray_orientation, double max_range) {
     const Vector2d b = Rotation2D<double>(ray_orientation).toRotationMatrix() * Vector2d::UnitX();
 
+    /*
+    * TODO: Use bounding box to rule out walls too far away
+    
+        double c = cos(ray_orientation);
+        double s = sin(ray_orientation);
+        bounding_box_t ray_box = {
+            .min_x = c <= 0 ? ray_origin(0) + max_range*c : ray_origin(0),
+            .max_x = c <= 0 ? ray_origin(0) : ray_origin(0) + max_range*c,
+            .min_y = s <= 0 ? ray_origin(0) + max_range*s : ray_origin(0),
+            .max_y = s <= 0 ? ray_origin(0) : ray_origin(0) + max_range*s
+        };
+    */
+
+
     double min_sensed_range = max_range;
 
     for (Wall const &w : env.get_walls()) {

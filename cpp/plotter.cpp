@@ -73,8 +73,8 @@ void plot_line_segment(eig::Vector2d start, eig::Vector2d end, const map<string,
 
 void plot_environment(Simulator simulator, bool show) {
   plt::figure_size(
-      PTS_PER_METER * (simulator.get_environment().get_bounding_box_coords().max_x - simulator.get_environment().get_bounding_box_coords().min_x),
-      PTS_PER_METER * (simulator.get_environment().get_bounding_box_coords().max_y - simulator.get_environment().get_bounding_box_coords().min_y)
+      PTS_PER_METER * (simulator.get_environment().get_bounding_box().max_x - simulator.get_environment().get_bounding_box().min_x),
+      PTS_PER_METER * (simulator.get_environment().get_bounding_box().max_y - simulator.get_environment().get_bounding_box().min_y)
   );
 
   for (Wall const &w : simulator.get_environment().get_walls()) {
@@ -90,7 +90,8 @@ void plot_environment(Simulator simulator, bool show) {
 }
 
 void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool add_legend, string run_name) {
-    if (!plt::fignum_exists(1) || show) {
+    if (show || run_name != "") {
+      plt::close();
       plot_environment(simulator, false);
     }
     

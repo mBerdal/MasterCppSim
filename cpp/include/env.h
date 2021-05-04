@@ -5,9 +5,7 @@
 #include <list>
 #include <vector>
 
-struct bounding_box_t {
-    double min_x, max_x, min_y, max_y;
-};
+#include "helper.h"
 
 class Wall {
 private:
@@ -19,8 +17,8 @@ public:
     Wall(Eigen::Vector2d start_point, Eigen::Vector2d end_point);
     inline Eigen::Vector2d get_start() const { return start_point; }
     inline Eigen::Vector2d get_end() const { return end_point; }
-    
-    inline bounding_box_t get_bounding_box_coords() const { return bounding_box; }
+
+    inline bounding_box_t get_bounding_box() const { return bounding_box; }
 };
 
 
@@ -37,7 +35,7 @@ public:
     
     inline std::vector<Wall> get_walls() const { return walls; }
     inline std::string get_name() const { return name; }
-    inline bounding_box_t get_bounding_box_coords() const { return bounding_box; }
+    inline bounding_box_t get_bounding_box() const { return bounding_box; }
     
     static Env ten_by_ten;
     static Env stripa_short;
