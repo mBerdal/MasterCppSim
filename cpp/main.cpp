@@ -39,13 +39,13 @@ int main() {
     xi_params.neigh_threshold = 0.5;
     xi_params.d_none = 6;
 
-    vector<int> n_agents_array = {9, 19, 39, 79};
+    vector<int> n_agents_array = {10};
     for (const int & n_agents : n_agents_array) {
         Simulator sim = Simulator(
             base_dt,
             gain_factor,
             k_obs,
-            Env::stripa,
+            Env(),
             n_agents,
             num_rays_per_range_sensor,
             xi_params,
@@ -55,7 +55,7 @@ int main() {
             ExpVecType::NEIGH_INDUCED_RANDOM
         );
 
-        string simulation_base_name = "try_2";
+        string simulation_base_name = "line_tests";
         sim.simulate();
         plot_config(sim, false, simulation_base_name);
         plot_uniformity_traj(sim, false, simulation_base_name);

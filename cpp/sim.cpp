@@ -97,6 +97,17 @@ void Simulator::simulate() {
         cout << "in " << step_count << " steps, with " << neighbor_set_traj[curr_deploying_agent_id - 1].back().second.size() << " neighbors.\n";
 
         compute_uniformity(curr_deploying_agent_id);
+
+        int num_uniformity_increaes = 0;
+        for (int i = (curr_deploying_agent_id < 15) ? 0 : curr_deploying_agent_id - 15; i < curr_deploying_agent_id; i++) {
+            if (uniformity_traj[i+1] > uniformity_traj[i]) {
+                num_uniformity_increaes++;
+            }
+            else {
+                num_uniformity_increaes = 0;
+            }
+        }
+        cout << "num uniformity increases: " << num_uniformity_increaes << "\n";
     }
 }
 

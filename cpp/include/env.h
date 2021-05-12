@@ -5,39 +5,27 @@
 #include <list>
 #include <vector>
 
+#include "line.h"
 #include "helper.h"
-
-class Wall {
-private:
-    Eigen::Vector2d start_point;
-    Eigen::Vector2d end_point;
-    bounding_box_t bounding_box;
-
-public:
-    Wall(const Eigen::Vector2d & start_point, const Eigen::Vector2d & end_point);
-    inline Eigen::Vector2d get_start() const { return start_point; }
-    inline Eigen::Vector2d get_end() const { return end_point; }
-
-    inline bounding_box_t get_bounding_box() const { return bounding_box; }
-};
-
 
 class Env {
 private:
-    std::vector<Wall> walls;
+    std::vector<Line> walls;
     std::string name;
-    bounding_box_t bounding_box;
+    BoundingBox bounding_box;
 
 public:
     Env(const std::string & name="noname");
-    Env(const std::vector<Wall> & walls, const std::string & name="noname");
+    Env(const std::vector<Line> & walls, const std::string & name="noname");
     Env(const std::list<Eigen::Matrix<double, 2, Eigen::Dynamic>> & obstacles, const std::string & name="noname");
     
-    inline std::vector<Wall> get_walls() const { return walls; }
+    inline std::vector<Line> get_walls() const { return walls; }
     inline std::string get_name() const { return name; }
-    inline bounding_box_t get_bounding_box() const { return bounding_box; }
+    inline BoundingBox get_bounding_box() const { return bounding_box; }
+    inline bool get_is_open () const { return walls.size() == 0; }
     
     static Env ten_by_ten;
+    static Env fifty_by_fifty;
     static Env stripa_short;
     static Env stripa;
 };

@@ -1,4 +1,5 @@
 #include "include/helper.h"
+#include <iostream>
 namespace eig = Eigen;
 
 double RandomNumberGenerator::get_between(double low, double high) {
@@ -50,6 +51,13 @@ double clamp_zero_two_pi(double ang) {
     return wrap_min_max(ang, 0, 2 * M_PI);
 }
 
-bool boxes_intersect (const bounding_box_t & a, const bounding_box_t & b) {
-    return !(a.min_x > b.max_x || a.max_x < b.min_x || a.max_y < b.min_y || a.min_y > b.max_y);
+bool BoundingBox::intersects (const BoundingBox & other) const {
+    return !(
+        min_x > other.max_x || max_x < other.min_x ||
+        max_y < other.min_y || min_y > other.max_y
+    );
+}
+
+void BoundingBox::print () const {
+    std::cout << "Bounding box:\nmin_x: " << min_x << ", max_x: " << max_x << ", min_y: " << min_y << ", max_y: " << max_y;
 }

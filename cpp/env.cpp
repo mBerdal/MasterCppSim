@@ -1,40 +1,31 @@
 #include "include/env.h"
 namespace eig = Eigen;
 
-Wall::Wall(const eig::Vector2d & start_point, const eig::Vector2d & end_point) : start_point(start_point), end_point(end_point) {
-    bounding_box.min_x = start_point.x() < end_point.x() ? start_point.x() : end_point.x();
-    bounding_box.max_x = start_point.x() > end_point.x() ? start_point.x() : end_point.x();
-    bounding_box.min_y = start_point.y() < end_point.y() ? start_point.y() : end_point.y();
-    bounding_box.max_y = start_point.y() > end_point.y() ? start_point.y() : end_point.y();
-}
+Env::Env(const std::string & name) : walls(std::vector<Line>()), name(name), bounding_box() {}
 
-Env::Env(const std::string & name) : walls(std::vector<Wall>()), name(name), bounding_box({0, 0, 0, 0}) {}
-
-Env::Env(const std::vector<Wall> & walls, const std::string & name) : walls(walls), name(name) {
-    bounding_box = {
-        .min_x = walls[0].get_bounding_box().min_x,
-        .max_x = walls[0].get_bounding_box().max_x,
-        .min_y = walls[0].get_bounding_box().min_y,
-        .max_y = walls[0].get_bounding_box().max_y,
-    };
-    for (int i = 1; i < walls.size(); i++) {
-        if (walls[i].get_bounding_box().min_x < bounding_box.min_x) {
-            bounding_box.min_x = walls[i].get_bounding_box().min_x;
-        }
-        if (walls[i].get_bounding_box().max_x > bounding_box.max_x) {
-            bounding_box.max_x = walls[i].get_bounding_box().max_x;
-        }
-        if (walls[i].get_bounding_box().min_y < bounding_box.min_y) {
-            bounding_box.min_y = walls[i].get_bounding_box().min_y;
-        }
-        if (walls[i].get_bounding_box().max_y > bounding_box.max_y) {
-            bounding_box.max_y = walls[i].get_bounding_box().max_y;
-        }
+Env::Env(const std::vector<Line> & walls, const std::string & name) : walls(walls), name(name) {
+    size_t n_walls = walls.size();
+    double* x_mins = new double[n_walls];
+    double* y_mins = new double[n_walls];
+    double* x_maxs = new double[n_walls];
+    double* y_maxs = new double[n_walls];
+    for (int i = 0; i < n_walls; i++) {
+        x_mins[i] = walls[i].get_bounding_box().get_min_x();
+        y_mins[i] = walls[i].get_bounding_box().get_min_y();
+        x_maxs[i] = walls[i].get_bounding_box().get_max_x();
+        y_maxs[i] = walls[i].get_bounding_box().get_max_y();
     }
+
+    bounding_box = BoundingBox(
+        *std::min_element(x_mins, x_mins + n_walls),
+        *std::min_element(y_mins, y_mins + n_walls),
+        *std::max_element(x_maxs, x_maxs + n_walls),
+        *std::max_element(y_maxs, y_maxs + n_walls)
+    );
 }
 
 Env::Env(const std::list<eig::Matrix<double, 2, eig::Dynamic>> & obstacles, const std::string & name) {
-    std::vector<Wall> tmp;
+    std::vector<Line> tmp;
     for (eig::Matrix<double, 2, eig::Dynamic> const &obs : obstacles) {
         tmp.emplace_back(obs.col(0), obs.col(obs.cols() - 1));
         for (int col_idx = 1; col_idx < obs.cols(); col_idx++) {
@@ -47,60 +38,70 @@ Env::Env(const std::list<eig::Matrix<double, 2, eig::Dynamic>> & obstacles, cons
 
 Env Env::ten_by_ten = Env(
     {
-        Wall(-eig::Vector2d::Ones(), -eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 9),
-        Wall(-eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 9, eig::Vector2d::UnitY() * 9 + eig::Vector2d::UnitX() * 9),
-        Wall(eig::Vector2d::UnitY() * 9 + eig::Vector2d::UnitX() * 9, -eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9),
-        Wall(-eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9, -eig::Vector2d::Ones())
+        Line(-eig::Vector2d::Ones(), -eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 9),
+        Line(-eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 9, eig::Vector2d::UnitY() * 9 + eig::Vector2d::UnitX() * 9),
+        Line(eig::Vector2d::UnitY() * 9 + eig::Vector2d::UnitX() * 9, -eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9),
+        Line(-eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9, -eig::Vector2d::Ones())
     },
     "ten_by_ten"
-    );
+);
+
+Env Env::fifty_by_fifty = Env(
+    {
+        Line(-eig::Vector2d::Ones(), -eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 49),
+        Line(-eig::Vector2d::UnitY() + eig::Vector2d::UnitX() * 49, eig::Vector2d::UnitY() * 49 + eig::Vector2d::UnitX() * 49),
+        Line(eig::Vector2d::UnitY() * 49 + eig::Vector2d::UnitX() * 49, -eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 49),
+        Line(-eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 49, -eig::Vector2d::Ones())
+    },
+    "fifty_by_fifty"
+);
 
 Env Env::stripa_short = Env(
     {
-        Wall(-eig::Vector2d::UnitX() - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 20 - eig::Vector2d::UnitY()),
-        Wall(eig::Vector2d::UnitX() * 20 - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 2),
-        Wall(eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 2, eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 2),
-        Wall(eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 2, eig::Vector2d::UnitX() * 22 - eig::Vector2d::UnitY()),
-        Wall(eig::Vector2d::UnitX() * 22 - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 30 - eig::Vector2d::UnitY()),
+        Line(-eig::Vector2d::UnitX() - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 20 - eig::Vector2d::UnitY()),
+        Line(eig::Vector2d::UnitX() * 20 - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 2),
+        Line(eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 2, eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 2),
+        Line(eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 2, eig::Vector2d::UnitX() * 22 - eig::Vector2d::UnitY()),
+        Line(eig::Vector2d::UnitX() * 22 - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 30 - eig::Vector2d::UnitY()),
 
-        Wall(eig::Vector2d::UnitX() * 40 - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 40 + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * 40 - eig::Vector2d::UnitY(), eig::Vector2d::UnitX() * 40 + eig::Vector2d::UnitY() * 9),
 
-        Wall(eig::Vector2d::UnitX() * 40 + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 9),
-        Wall(eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 6),
-        Wall(eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 6, eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 6),
-        Wall(eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 6, eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 9),
-        Wall(eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 9, -eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * 40 + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 6),
+        Line(eig::Vector2d::UnitX() * 22 + eig::Vector2d::UnitY() * 6, eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 6),
+        Line(eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 6, eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * 20 + eig::Vector2d::UnitY() * 9, -eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9),
 
-        Wall(-eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9, -eig::Vector2d::UnitX() - eig::Vector2d::UnitY())
+        Line(-eig::Vector2d::UnitX() + eig::Vector2d::UnitY() * 9, -eig::Vector2d::UnitX() - eig::Vector2d::UnitY())
     },
     "stripa_short"
 );
 
 Env Env::stripa = Env(
     {
-        Wall(eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY()*(-1)),
-        Wall(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() *(-1 + 3)),
-        Wall(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3)),
-        Wall(eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY()*(-1)),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2)) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1)),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() *(-1 + 3)),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3)),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY()*(-1)),
-        Wall(eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2)) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1)),
+        Line(eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY()*(-1)),
+        Line(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() *(-1 + 3)),
+        Line(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3)),
+        Line(eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY()*(-1)),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2)) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1)),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() *(-1 + 3)),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3)),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() *(-1 + 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY()*(-1)),
+        Line(eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2)) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1)),
         
-        Wall(eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY()*(-1), eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9),
 
-        Wall(eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2)) + eig::Vector2d::UnitY() * 9),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3)),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * (9 - 3)),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9),
-        Wall(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * ((-1 + 20 + 2)) + eig::Vector2d::UnitY() * 9),
-        Wall(eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3)),
-        Wall(eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * (9 - 3)),
-        Wall(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * 9),
-        Wall(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (((-1 + 20 + 2) + 20 + 2)) + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3)),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * (9 - 3)),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * ((-1 + 20 + 2) + 20) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * ((-1 + 20 + 2)) + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3)),
+        Line(eig::Vector2d::UnitX() * (-1 + 20 + 2) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * (9 - 3)),
+        Line(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * (9 - 3), eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * 9),
+        Line(eig::Vector2d::UnitX() * (-1 + 20) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY() * 9),
 
-        Wall(eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY()*(-1))
+        Line(eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY() * 9, eig::Vector2d::UnitX() * (-1) + eig::Vector2d::UnitY()*(-1))
     },
     "stripa"
 );

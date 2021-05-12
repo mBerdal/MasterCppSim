@@ -72,12 +72,17 @@ void plot_line_segment(eig::Vector2d start, eig::Vector2d end, const map<string,
 }
 
 void plot_environment(Simulator simulator, bool show) {
-  plt::figure_size(
-      PTS_PER_METER * (simulator.get_environment().get_bounding_box().max_x - simulator.get_environment().get_bounding_box().min_x),
-      PTS_PER_METER * (simulator.get_environment().get_bounding_box().max_y - simulator.get_environment().get_bounding_box().min_y)
-  );
+  if (simulator.get_environment().get_is_open()) {
+    plt::figure_size(500, 500);
+  }
+  else {
+    plt::figure_size(
+        PTS_PER_METER * (simulator.get_environment().get_bounding_box().get_max_x() - simulator.get_environment().get_bounding_box().get_min_x()),
+        PTS_PER_METER * (simulator.get_environment().get_bounding_box().get_max_y() - simulator.get_environment().get_bounding_box().get_min_y())
+    );
+  }
 
-  for (Wall const &w : simulator.get_environment().get_walls()) {
+  for (Line const &w : simulator.get_environment().get_walls()) {
       plot_line_segment(
         w.get_start(),
         w.get_end(),
