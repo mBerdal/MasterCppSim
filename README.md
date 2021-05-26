@@ -6,7 +6,7 @@ Install using
 ```
 sudo apt install nlohmann-json-dev
 ```
-## matplotlib-cpp
+## matplotlib-cpp (not needed if python_plotting is used to plot from json)
 You find it in [this](https://github.com/lava/matplotlib-cpp) repo.
 Note that matplotlib-cpp must be compiled in order for the plotting to work.
 
