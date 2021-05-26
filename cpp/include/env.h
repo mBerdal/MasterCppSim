@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include <list>
 #include <vector>
+#include <nlohmann/json.hpp>
 
 #include "line.h"
 #include "helper.h"
@@ -23,6 +24,8 @@ public:
     inline std::string get_name() const { return name; }
     inline BoundingBox get_bounding_box() const { return bounding_box; }
     inline bool get_is_open () const { return walls.size() == 0; }
+
+    nlohmann::json add_to_json(nlohmann::json & j) const;
     
     static Env ten_by_ten;
     static Env fifty_by_fifty;

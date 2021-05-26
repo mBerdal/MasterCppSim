@@ -16,9 +16,12 @@ using json = nlohmann::json;
 #include <iostream>
 using namespace std;
 
-#define DATA_DIR string("../../data/")
-
 int main() {
+    double d_perf = 2;
+    double xi_bar = 1;
+    double tau_xi = 0.5;
+    paper_compare(50, 100, d_perf, xi_bar, tau_xi);
+    return 0;
 
     Env environment = Env::ten_by_ten;
 
@@ -36,16 +39,17 @@ int main() {
     XiParams xi_params;
     xi_params.d_perf = 3;
     xi_params.xi_bar = 20;
-    xi_params.neigh_threshold = 0.5;
+    xi_params.agent_neigh_threshold = 0.5;
+    xi_params.beacon_neigh_threshold = 0.5;
     xi_params.d_none = 6;
 
-    vector<int> n_agents_array = {10};
+    vector<int> n_agents_array = {3};
     for (const int & n_agents : n_agents_array) {
         Simulator sim = Simulator(
             base_dt,
             gain_factor,
             k_obs,
-            Env(),
+            Env::ten_by_ten,
             n_agents,
             num_rays_per_range_sensor,
             xi_params,
@@ -55,11 +59,13 @@ int main() {
             ExpVecType::NEIGH_INDUCED_RANDOM
         );
 
-        string simulation_base_name = "line_tests";
+        string simulation_base_name = "try_4";
         sim.simulate();
         plot_config(sim, false, simulation_base_name);
         plot_uniformity_traj(sim, false, simulation_base_name);
         plot_single_beacon_traj(sim, 1, false, true, simulation_base_name);
+
+        sim.save_to_json("test/", "test_1");
 
     }
 

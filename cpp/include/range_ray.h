@@ -6,8 +6,9 @@
 
 class RangeRay {
 public:
-    static double sense(const Eigen::Vector2d & ray_origin, double ray_orientation, double max_range);
+    static double sense(const Eigen::Vector2d & ray_origin, double ray_orientation);
     static Env env;
+    static double max_range;
 };
 
 #endif

@@ -42,12 +42,8 @@ void show_and_close(bool show) {
     plt::close();
 }
 
-string get_saving_base_path(Simulator simulator) {
-  return FIGURES_DIR + simulator.get_environment().get_name() + "/" + to_string(simulator.get_num_deployed_beacons()) + "_beacons";
-}
-
-void save_plot(Simulator simulator, string run_name, string plot_name) {
-  string save_path = get_saving_base_path(simulator) + "/" + run_name;
+void save_plot(const Simulator & simulator, string run_name, string plot_name) {
+  string save_path = FIGURES_DIR + simulator.get_saving_string() + "/" + run_name;
   fs::create_directories(save_path);
   plt::save(save_path + "/" + plot_name + ".pdf");
 }
@@ -71,9 +67,9 @@ void plot_line_segment(eig::Vector2d start, eig::Vector2d end, const map<string,
   plt::plot(x_range, y_range, keywords);
 }
 
-void plot_environment(Simulator simulator, bool show) {
+void plot_environment(const Simulator & simulator, bool show) {
   if (simulator.get_environment().get_is_open()) {
-    plt::figure_size(500, 500);
+    plt::figure_size(1000, 1000);
   }
   else {
     plt::figure_size(
@@ -94,7 +90,7 @@ void plot_environment(Simulator simulator, bool show) {
   }
 }
 
-void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool add_legend, string run_name) {
+void plot_single_beacon_traj(const Simulator & simulator, int beacon_id, bool show, bool add_legend, string run_name) {
     if (show || run_name != "") {
       plt::close();
       plot_environment(simulator, false);
@@ -135,14 +131,6 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     for (int i = 0; i < num_exp_vecs; i++) {
       plot_line_segment(
         beacon_final_pos,
-        beacon_final_pos + eig::Rotation2Dd(simulator.get_beacon_exploration_angles(beacon_id, ExpVecType::NEIGH_INDUCED)[i]).toRotationMatrix() * eig::Vector2d::UnitX(),
-        {
-          {"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_OTHER_GRADIENT)},
-          {"label", add_legend ? R"($\mathbf{v}_{n}$)" : ""}
-        }
-      );
-      plot_line_segment(
-        beacon_final_pos,
         beacon_final_pos + eig::Rotation2Dd(simulator.get_applied_beacon_exploration_angles(beacon_id)[i]).toRotationMatrix() * eig::Vector2d::UnitX(),
         {
           {"color", get_interpolated_color(i / (double) num_exp_vecs, DAT_GRADIENT)},
@@ -167,7 +155,7 @@ void plot_single_beacon_traj(Simulator simulator, int beacon_id, bool show, bool
     }
 }
 
-void plot_config(Simulator simulator, bool show, string run_name) {
+void plot_config(const Simulator & simulator, bool show, string run_name) {
     plot_environment(simulator, false);
 
     for (int beacon_id = 0; beacon_id < simulator.get_num_deployed_beacons(); beacon_id++) {
@@ -186,7 +174,7 @@ void plot_config(Simulator simulator, bool show, string run_name) {
 }
 
 
-void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name) {
+void plot_agent_force_vs_time(const Simulator & simulator, int agent_id, string run_name) {
     plt::figure_size(500, 500);
 
     vector<double> time = eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).row(Simulator::TIMESTAMP_IDX));
@@ -228,7 +216,7 @@ void plot_agent_force_vs_time(Simulator simulator, int agent_id, string run_name
     show_and_close(true);
 }
 
-void plot_agent_force_vs_dist(Simulator simulator, int agent_id, string run_name) {
+void plot_agent_force_vs_dist(const Simulator & simulator, int agent_id, string run_name) {
     plt::figure_size(500, 500);
 
     vector<double> dist = eig_vec2std_vec((eig::VectorXd) simulator.get_beacon_traj_data(agent_id).middleRows(Simulator::POSITION_X_IDX, 2).colwise().norm());
@@ -329,7 +317,7 @@ void plot_agent_neigh_traj(Simulator simulator, int agent_id, string run_name) {
     show_and_close(true);
 }
 
-void plot_uniformity_traj(Simulator simulator, bool show, string run_name) {
+void plot_uniformity_traj(const Simulator & simulator, bool show, string run_name) {
   plt::figure_size((16 / 9.0) * 400, 400);
   vector<double> num_agents;
   vector<double> uniformity;

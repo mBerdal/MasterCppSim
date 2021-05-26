@@ -35,6 +35,18 @@ Env::Env(const std::list<eig::Matrix<double, 2, eig::Dynamic>> & obstacles, cons
     Env(tmp, name);
 }
 
+nlohmann::json Env::add_to_json(nlohmann::json & j) const {
+    j["environment"]["name"] = name;
+    j["environment"]["walls"];
+    for(int i=0; i < walls.size(); i++) {
+        j["environment"]["walls"][i] = eig_vec2std_vec(walls[i].get_start());
+    }
+    j["environment"]["bounding_box"]["min_x"] = bounding_box.get_min_x();
+    j["environment"]["bounding_box"]["max_x"] = bounding_box.get_max_x();
+    j["environment"]["bounding_box"]["min_y"] = bounding_box.get_min_y();
+    j["environment"]["bounding_box"]["max_y"] = bounding_box.get_max_y();
+}
+
 
 Env Env::ten_by_ten = Env(
     {

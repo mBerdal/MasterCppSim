@@ -9,10 +9,7 @@ using json = nlohmann::json;
 #include <fstream>
 using namespace std;
 
-#define DATA_DIR string("../../data/")
-
-
-void paper_compare(int num_beacons_to_deploy_start, int num_beacons_to_deploy_end, int num_runs_per_swarm_size,
+void paper_compare(int num_beacons_to_deploy, int num_runs,
                    double d_perf, double xi_bar, double neigh_threshold, double rC) {
     // Parameters
     int num_rays_per_range_sensor = 1;
@@ -28,7 +25,8 @@ void paper_compare(int num_beacons_to_deploy_start, int num_beacons_to_deploy_en
     XiParams xi_params;
     xi_params.d_perf = d_perf;
     xi_params.xi_bar = xi_bar;
-    xi_params.neigh_threshold = neigh_threshold;
+    xi_params.agent_neigh_threshold = neigh_threshold;
+    xi_params.beacon_neigh_threshold = neigh_threshold;
     xi_params.d_none = d_perf +\
      (M_PI * (rC - d_perf)) / acos((2 * neigh_threshold / xi_bar) - 1);
 
@@ -38,7 +36,7 @@ void paper_compare(int num_beacons_to_deploy_start, int num_beacons_to_deploy_en
     ss << "xi_bar_" << fixed << setprecision(2) << xi_params.xi_bar << \
           "_d_perf_" << fixed << setprecision(2) << xi_params.d_perf << \
           "_d_none_" << fixed << setprecision(2) << xi_params.d_none << \
-          "_tau_xi_" << fixed << setprecision(2) << xi_params.neigh_threshold;
+          "_tau_xi_" << fixed << setprecision(2) << xi_params.agent_neigh_threshold;
     
     string storage_prefix = ss.str();
 
@@ -49,36 +47,29 @@ void paper_compare(int num_beacons_to_deploy_start, int num_beacons_to_deploy_en
     json data_storage;
 
     // Initializing simulator with parameters
-    for (int num_agents_to_deploy = num_beacons_to_deploy_start - 1; num_agents_to_deploy < num_beacons_to_deploy_end; num_agents_to_deploy++) {
-        vector<double> uniformities = vector<double>(num_runs_per_swarm_size, 0);
-        for (int i = 0; i < num_runs_per_swarm_size; i++) {
-            Simulator simulator(
-                base_dt,
-                gain_factor,
-                k_obs,
-                Env::ten_by_ten,
-                num_agents_to_deploy,
-                num_rays_per_range_sensor,
-                xi_params,
-                force_saturation_limit,
-                minimum_force_threshold,
-                agent_max_steps,
-                ExpVecType::NEIGH_INDUCED_RANDOM
-            );
+    for (int i = 0; i < num_runs; i++) {
+        Simulator simulator(
+            base_dt,
+            gain_factor,
+            k_obs,
+            Env::ten_by_ten,
+            num_beacons_to_deploy - 1,
+            num_rays_per_range_sensor,
+            xi_params,
+            force_saturation_limit,
+            minimum_force_threshold,
+            agent_max_steps,
+            ExpVecType::NEIGH_INDUCED_RANDOM
+        );
 
 
-            // Run simulator
-            simulator.simulate();
-            uniformities[i] = simulator.get_uniformity_after_deploying_num_agents(num_agents_to_deploy);
-            if (i == 0) {
-                plot_config(simulator, false, plot_general_name);
-            }
+        // Run simulator
+        simulator.simulate();
+        if (i == 0) {
+            plot_config(simulator, false, plot_general_name);
         }
-        data_storage[to_string(num_agents_to_deploy + 1)] = uniformities;
+
+        string tmp = "d_p" + to_string(xi_params.d_perf) + "_d_n" + to_string(xi_params.d_none) + "_xi_b" + to_string(xi_params.xi_bar) + "xi_n_b" + to_string(neigh_threshold);
+        simulator.save_to_json("uniformity_compare/" + tmp + "/", "run" + to_string(i+1));
     }
-    
-    std::ofstream o(
-        DATA_DIR + storage_prefix + "_runs_per_swarm_size_" + to_string(num_runs_per_swarm_size) + ".json"
-    );
-    o << std::setw(4) << data_storage << std::endl;
 }

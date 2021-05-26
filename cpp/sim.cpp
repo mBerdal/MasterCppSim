@@ -3,6 +3,11 @@
 
 #include <iostream> /* cout */
 #include <math.h>   /* pow */
+#include <fstream>
+#include <iomanip>
+#include <experimental/filesystem>
+
+#define DATA_BASE_DIR string("../../data/")
 
 namespace eig = Eigen;
 using namespace std;
@@ -15,6 +20,7 @@ Simulator::Simulator(double base_dt, double gain_factor, double k_obs, const Env
     this->gain_factor = gain_factor;
     this->k_obs = k_obs;
     RangeRay::env = environment;
+    RangeRay::max_range = 2;
     this->environment = environment;
     this->num_agents_to_deploy = num_agents_to_deploy;
     this->force_saturation_limit = force_saturation_limit;
@@ -74,16 +80,7 @@ void Simulator::simulate() {
 
         cout << "Agent " << curr_deploying_agent_id << " landed due to ";
 
-        /* Removing unused data columns
-        
-        If deployment was haulted due to lack of neighbors before performing step,
-        we pretend that the step causing the drone to loose contact never happened.
-        If deployment was haulted due to a lack of force, we are happy and include
-        the step taken before haulting due to a lack of force.
-        */
         if (step_result == NO_NEIGHBORS) {
-            step_count--;
-            time -= dt;
             cout << "a lack of neighbors, ";
         } else {
             cout << "a lack of force, ";
@@ -94,50 +91,54 @@ void Simulator::simulate() {
 
         compute_beacon_exploration_dir(curr_deploying_agent_id, curr_deploying_agent_id - 1);
 
-        cout << "in " << step_count << " steps, with " << neighbor_set_traj[curr_deploying_agent_id - 1].back().second.size() << " neighbors.\n";
+        cout << "in " << step_count << " steps, with |N_a(i)|=" << neighbor_set_traj[curr_deploying_agent_id - 1].back().second.size()
+             << ", |N_b(i)|=" << get_beacon_neighbors(curr_deploying_agent_id, curr_deploying_agent_id - 1).size() << "\n";
 
         compute_uniformity(curr_deploying_agent_id);
 
-        int num_uniformity_increaes = 0;
+        int num_uniformity_increases = 0;
         for (int i = (curr_deploying_agent_id < 15) ? 0 : curr_deploying_agent_id - 15; i < curr_deploying_agent_id; i++) {
             if (uniformity_traj[i+1] > uniformity_traj[i]) {
-                num_uniformity_increaes++;
+                num_uniformity_increases++;
             }
             else {
-                num_uniformity_increaes = 0;
+                num_uniformity_increases = 0;
             }
         }
-        cout << "num uniformity increases: " << num_uniformity_increaes << "\n";
+        cout << "num uniformity increases: " << num_uniformity_increases << "\n";
     }
+}
+
+
+eig::Vector2d Simulator::get_beacon_pos(int beacon_id) const {
+    return beacon_traj_data[beacon_id].topRightCorner(2, 1);
+}
+
+double Simulator::get_local_uniformity(int beacon_id, int max_neigh_id) const {
+    vector<int> beacon_neighs = get_beacon_neighbors(beacon_id, max_neigh_id);
+    double num_beacon_neighs_dbl = beacon_neighs.size();
+    eig::Vector2d beacon_pos = get_beacon_pos(beacon_id);
+
+    double total_neigh_dist = 0;
+    for(const int & neigh_id : beacon_neighs) {
+        total_neigh_dist += (beacon_pos -  get_beacon_pos(neigh_id)).norm();
+    }
+    double avg_neigh_dist = total_neigh_dist / num_beacon_neighs_dbl;
+
+    double sum_of_squared_dist_diff = 0;
+    for(const int & neigh_id : beacon_neighs) {
+        sum_of_squared_dist_diff += pow((beacon_pos -  get_beacon_pos(neigh_id)).norm() - avg_neigh_dist, 2);
+    }
+    return sqrt(sum_of_squared_dist_diff / num_beacon_neighs_dbl);
 }
 
 void Simulator::compute_uniformity(int max_agent_id) {
-    double tmp = 0;
+    double local_uniformity_sum = 0;
     for (int beacon_id = 0; beacon_id <= max_agent_id; beacon_id++) {
-        eig::Vector2d beacon_pos = beacon_traj_data[beacon_id].topRightCorner(2, 1);
-        vector<int> beacon_neighs = get_beacon_neighbors(beacon_id, beacon_pos , max_agent_id);
-        int num_beacon_neighs = beacon_neighs.size();
-
-        double beacon_neigh_avg_dist = 0;
-        for (const int & neigh_id : beacon_neighs) {
-            eig::Vector2d neigh_pos = beacon_traj_data[neigh_id].topRightCorner(2, 1);
-            beacon_neigh_avg_dist += (beacon_pos - neigh_pos).norm();
-        }
-        beacon_neigh_avg_dist /= (double) num_beacon_neighs;
-
-        double sum_of_squared_deviance = 0;
-        for (const int & neigh_id : beacon_neighs) {
-            eig::Vector2d neigh_pos = beacon_traj_data[neigh_id].topRightCorner(2, 1);
-            sum_of_squared_deviance += pow((beacon_pos - neigh_pos).norm() - beacon_neigh_avg_dist, 2);
-        }
-
-        double beacon_uniformity = sqrt((1 / (double) num_beacon_neighs) * sum_of_squared_deviance);
-        tmp += beacon_uniformity;
+        local_uniformity_sum += get_local_uniformity(beacon_id, max_agent_id);
     }
-    uniformity_traj[max_agent_id] = tmp / (double) (max_agent_id + 1);
+    uniformity_traj[max_agent_id] = local_uniformity_sum / (double) (max_agent_id + 1);
 }
-
-
 
 Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count) {
     if (step_count + 1 >= beacon_traj_data[curr_deploying_agent_id].cols()) {
@@ -151,10 +152,9 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
     eig::Vector2d curr_deploying_agent_pos = curr_deploying_agent_state.head(2);
     double curr_deploying_agent_yaw = curr_deploying_agent_state(YAW_IDX);
 
-    vector<int> curr_deploying_agent_neighs = get_beacon_neighbors(
+    vector<int> curr_deploying_agent_neighs = get_agent_neighbors(
         curr_deploying_agent_id,
-        curr_deploying_agent_pos,
-        curr_deploying_agent_id - 1
+        curr_deploying_agent_pos
     );
 
     if (curr_deploying_agent_neighs.size() == 0) {
@@ -202,7 +202,6 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
         }
     }
 
-
     /**
      * TODO: Fix dynamic step size
      **/
@@ -233,11 +232,7 @@ Simulator::StepResult Simulator::do_step(int curr_deploying_agent_id, double* dt
 }
 
 void Simulator::compute_beacon_exploration_dir(int beacon_id, int max_neigh_id){
-    vector<int> beacon_neighs = get_beacon_neighbors(
-        beacon_id,
-        beacon_traj_data[beacon_id].topRightCorner(2, 1),
-        max_neigh_id
-    );
+    vector<int> beacon_neighs = get_beacon_neighbors(beacon_id, max_neigh_id);
     eig::Vector2d neigh_o_hat = beacon_traj_data[beacon_id].block(
         O_HAT_X_IDX,
         beacon_traj_data[beacon_id].cols()-1,
@@ -278,7 +273,7 @@ eig::Vector2d Simulator::get_single_neigh_force_on_agent(double k_i, const eig::
 
 
 eig::Vector2d Simulator::get_env_force_agent(const eig::Vector2d & obstacle_avoidance_vec) const {
-    return k_obs * (1 / (RANGE_SENSOR_MAX_RANGE_METERS - obstacle_avoidance_vec.norm())) * obstacle_avoidance_vec;
+    return k_obs * (1 / (RangeRay::max_range - obstacle_avoidance_vec.norm())) * obstacle_avoidance_vec;
 }
 
 eig::Vector2d Simulator::get_obstacle_avoidance_vector(const eig::Vector2d & agent_pos, double agent_yaw) const {
@@ -292,13 +287,13 @@ eig::Vector2d Simulator::get_obstacle_avoidance_vector(const eig::Vector2d & age
     }
 
     double o_norm = o.norm();
-    return o_norm <= RANGE_SENSOR_MAX_RANGE_METERS ? o : (RANGE_SENSOR_MAX_RANGE_METERS / o_norm)*o;
+    return o_norm <= RangeRay::max_range ? o : (RangeRay::max_range / o_norm)*o;
 }
 
 eig::Matrix<double, 4, 2> Simulator::get_sensed_ranges_and_angles(const eig::Vector2d & agent_pos, double agent_yaw) const {
 
     eig::Matrix<double, 4, 2> sensed_ranges_and_angles;
-    sensed_ranges_and_angles.col(0) = ((double)RANGE_SENSOR_MAX_RANGE_METERS) * eig::Vector4d::Ones();
+    sensed_ranges_and_angles.col(0) = RangeRay::max_range * eig::Vector4d::Ones();
     sensed_ranges_and_angles.col(1) = agent_yaw * eig::Vector4d::Ones() + eig::Vector4d::LinSpaced(0, (3 / 2.0) * M_PI);
 
     for (int i = 0; i < 4; i++) {
@@ -306,7 +301,7 @@ eig::Matrix<double, 4, 2> Simulator::get_sensed_ranges_and_angles(const eig::Vec
         eig::ArrayXd ray_angles_rel_NED = ray_angles_rel_SENSOR + sensor_angle_rel_NED;
 
         for (int j = 0; j < num_rays_per_range_sensor; j++) {
-            double m = RangeRay::sense(agent_pos, ray_angles_rel_NED(j), RANGE_SENSOR_MAX_RANGE_METERS);
+            double m = RangeRay::sense(agent_pos, ray_angles_rel_NED(j));
             if (m < sensed_ranges_and_angles(i, 0)) {
                 sensed_ranges_and_angles(i, 0) = m;
                 sensed_ranges_and_angles(i, 1) = ray_angles_rel_NED(j);
@@ -316,18 +311,26 @@ eig::Matrix<double, 4, 2> Simulator::get_sensed_ranges_and_angles(const eig::Vec
     return sensed_ranges_and_angles;
 }
 
-vector<int> Simulator::get_beacon_neighbors(int beacon_id, const eig::Vector2d & beacon_pos, int max_neigh_id) const {
+vector<int> Simulator::get_neighbors(int id, const eig::Vector2d & pos, int max_neigh_id, double neigh_treshold) const {
     vector<int> neighs;
     for (int other_beacon_id=0; other_beacon_id <= max_neigh_id; other_beacon_id++) {
-        if (other_beacon_id != beacon_id) {
+        if (other_beacon_id != id) {
             eig::Vector2d other_beacon_pos = beacon_traj_data[other_beacon_id].topRightCorner(2, 1);
-            double dist = (beacon_pos - other_beacon_pos).norm();
-            if (get_Xi_from_model(dist, xi_params.d_perf, xi_params.d_none, xi_params.xi_bar) > xi_params.neigh_threshold) {
+            double dist = (pos - other_beacon_pos).norm();
+            if (get_Xi_from_model(dist, xi_params.d_perf, xi_params.d_none, xi_params.xi_bar) > neigh_treshold) {
                 neighs.push_back(other_beacon_id);
             }
         }
     }
     return neighs;
+}
+
+vector<int> Simulator::get_beacon_neighbors(int beacon_id, int max_neigh_id) const {
+    return get_neighbors(beacon_id, get_beacon_pos(beacon_id), max_neigh_id, xi_params.beacon_neigh_threshold);
+}
+
+vector<int> Simulator::get_agent_neighbors(int agent_id, const eig::Vector2d & agent_pos) const {
+    return get_neighbors(agent_id, agent_pos, agent_id - 1, xi_params.agent_neigh_threshold);
 }
 
 CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, const vector<int> & agent_neighbors, const eig::Vector2d & obstacle_avoidance_vec) const {
@@ -338,7 +341,7 @@ CircleSector Simulator::get_exploration_sector(int curr_deploying_agent_id, cons
     int num_neighs = agent_neighbors.size();
     vector<double> angles;
     double sector_min_bound, sector_max_bound;
-    bool avoid_obstacle = obstacle_avoidance_vec.norm() >= RANGE_SENSOR_MAX_RANGE_METERS / 2.0;
+    bool avoid_obstacle = obstacle_avoidance_vec.norm() >= RangeRay::max_range / 2.0;
 
 
     if (avoid_obstacle) {
@@ -469,12 +472,48 @@ Simulator::LoopCheckResult Simulator::get_loop_check_result(int curr_deploying_a
     return result;
 }
 
-double Simulator::get_wall_adjusted_angle(double nominal_angle, const eig::Vector2d & obstacle_avoidance_vec) const {
-    double o_hat_angle = atan2(obstacle_avoidance_vec(1), obstacle_avoidance_vec(0));
-    double o_hat_norm = obstacle_avoidance_vec.norm();
+void Simulator::save_to_json(std::string dir, std::string run_name) const {
+    nlohmann::json j;
+    environment.add_to_json(j);
 
-    double w_ang = o_hat_norm / RANGE_SENSOR_MAX_RANGE_METERS;
-    double c = (1 - w_ang)*cos(nominal_angle) + w_ang*cos(o_hat_angle);
-    double s = (1 - w_ang)*sin(nominal_angle) + w_ang*sin(o_hat_angle);
-    return atan2(s, c);
+    /**
+    * Storing beacon locations 
+    **/
+    j["beacon_data"];
+    for (int beacon_id = 0; beacon_id < get_num_deployed_beacons(); beacon_id++) {
+        j["beacon_data"][beacon_id]["x"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(POSITION_X_IDX));
+        j["beacon_data"][beacon_id]["y"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(POSITION_Y_IDX));
+        j["beacon_data"][beacon_id]["v_x"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(VELOCITY_X_IDX));
+        j["beacon_data"][beacon_id]["v_y"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(VELOCITY_Y_IDX));
+        j["beacon_data"][beacon_id]["yaw"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(YAW_IDX));
+        j["beacon_data"][beacon_id]["f_n_x"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(F_N_X_IDX));
+        j["beacon_data"][beacon_id]["f_n_y"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(F_N_Y_IDX));
+        j["beacon_data"][beacon_id]["f_e_x"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(F_E_X_IDX));
+        j["beacon_data"][beacon_id]["f_e_y"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(F_E_Y_IDX));
+        j["beacon_data"][beacon_id]["f_x"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(F_X_IDX));
+        j["beacon_data"][beacon_id]["f_y"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(F_Y_IDX));
+        j["beacon_data"][beacon_id]["time"] = eig_vec2std_vec((eig::VectorXd) beacon_traj_data[beacon_id].row(TIMESTAMP_IDX));
+        j["beacon_data"][beacon_id]["theta_exp"] = exploration_angles[beacon_id][use_exp_vec_type];
+    }
+
+    /**
+    * Storing signal strength model parameters
+    **/
+    j["signal_strength_data"]["xi_bar"] = xi_params.xi_bar;
+    j["signal_strength_data"]["d_perf"] = xi_params.d_perf;
+    j["signal_strength_data"]["d_none"] = xi_params.d_none;
+    j["signal_strength_data"]["agent_neigh_threshold"] = xi_params.agent_neigh_threshold;
+    j["signal_strength_data"]["beacon_neigh_threshold"] = xi_params.beacon_neigh_threshold;
+
+    /**
+    * Storing uniformity trajectory
+    **/
+    for (int i=0; i < 1 + num_agents_to_deploy; i++) {
+        j["uniformity"][i] = uniformity_traj[i];
+    }
+
+    std::string path = DATA_BASE_DIR + dir + get_saving_string();
+    experimental::filesystem::create_directories(path);
+    std::ofstream ofs(path + "/" + run_name + ".json");
+    ofs << std::setw(4) << j;
 }

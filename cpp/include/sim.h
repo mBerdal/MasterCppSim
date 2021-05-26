@@ -7,6 +7,8 @@
 #include <Eigen/Dense>
 #include <set>
 #include <map>
+#include <nlohmann/json.hpp>
+
 
 enum ExpVecType {
     NEIGH_INDUCED,
@@ -15,7 +17,7 @@ enum ExpVecType {
 };
 
 struct XiParams {
-    double d_perf, d_none, xi_bar, neigh_threshold;
+    double d_perf, d_none, xi_bar, agent_neigh_threshold, beacon_neigh_threshold;
 };
 
 class Simulator {
@@ -34,8 +36,8 @@ public:
     inline std::vector<double> get_beacon_exploration_angles(int beacon_id, ExpVecType exp_vec_type) const { return exploration_angles[beacon_id][exp_vec_type]; }
     inline std::vector<double> get_applied_beacon_exploration_angles(int beacon_id) const { return exploration_angles[beacon_id][use_exp_vec_type]; }
 
-    inline double get_force_saturation_limit() { return force_saturation_limit; }
-    inline double get_minimum_force_threshold() { return minimum_force_threshold; }
+    inline double get_force_saturation_limit() const { return force_saturation_limit; }
+    inline double get_minimum_force_threshold() const { return minimum_force_threshold; }
 
     static const int NUM_STATE_VARIABLES = 5;
     static const int NUM_TRAJ_DATA_POINTS = 14;
@@ -67,6 +69,9 @@ public:
     std::map<int, std::vector<Eigen::Vector2i>> agent_id_to_loop_initiators_map;
 
     double get_beacon_nominal_weight(int beacon_id) const;
+
+    inline std::string get_saving_string() const { return environment.get_name() + "/" + std::to_string(get_num_deployed_beacons()) + "_beacons"; }
+    void save_to_json(std::string data_dir, std::string run_name) const;
     
 private:
 
@@ -134,17 +139,19 @@ private:
     Eigen::Vector2d get_single_neigh_force_on_agent(double k_i, const Eigen::Vector2d & agent_pos, const Eigen::Vector2d & beacon_pos, double beacon_exploration_dir, double beacon_xi) const;
     Eigen::Vector2d get_env_force_agent(const Eigen::Vector2d & obstacle_avoidance_vec) const;
     Eigen::Vector2d get_obstacle_avoidance_vector(const Eigen::Vector2d & agent_pos, double agent_yaw) const;
+    Eigen::Vector2d get_beacon_pos(int beacon_id) const;
 
     Eigen::Matrix<double, 4, 2> get_sensed_ranges_and_angles(const Eigen::Vector2d & agent_pos, double agent_yaw) const;
 
     StepResult do_step(int curr_deploying_agent_id, double* dt_ptr, int step_count);
 
-    std::vector<int> get_beacon_neighbors(int beacon_id, const Eigen::Vector2d & beacon_pos, int max_neigh_id) const;
+    std::vector<int> get_neighbors(int id, const Eigen::Vector2d & pos, int max_neigh_id, double neigh_treshold) const;
+    std::vector<int> get_beacon_neighbors(int beacon_id, int max_neigh_id) const;
+    std::vector<int> get_agent_neighbors(int agent_id, const Eigen::Vector2d & agent_pos) const;
+
     void set_all_exp_vec_types_for_beacon(int beacon_id, const std::vector<int> &  neighbor_ids, const Eigen::Vector2d & obstacle_avoidance_vec);
 
     double get_avg_angle_away_from_neighs(int beacon_id, const std::vector<int> &  neighbor_ids) const;
-    double get_wall_adjusted_angle(double nominal_angle, const Eigen::Vector2d & obstacle_avoidance_vec) const;
-    
 
     enum LoopCheckResult {
         NO_LOOP,
@@ -166,6 +173,8 @@ private:
     inline bool did_neigh_set_change(int agent_id, const std::vector<int> & new_neigh_set) { return !vectors_equal(neighbor_set_traj[agent_id - 1].back().second, new_neigh_set); }
 
     void compute_uniformity(int max_agent_id);
+
+    double get_local_uniformity(int beacon_id, int max_neigh_id) const;
 };
 
 #endif
